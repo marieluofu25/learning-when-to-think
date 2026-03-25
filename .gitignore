@@ -1,0 +1,29 @@
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Model checkpoints & artifacts
+checkpoints/
+
+# Evaluation results
+results/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# uv cache
+.uv/
