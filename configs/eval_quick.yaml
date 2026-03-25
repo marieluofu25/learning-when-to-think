@@ -1,0 +1,6 @@
+model_name: "Qwen/Qwen2.5-0.5B-Instruct"
+dataset: "gsm8k"
+eval_subset_size: 30
+max_steps: 5
+max_tokens_per_step: 256
+self_consistency_k: 3
