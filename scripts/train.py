@@ -32,6 +32,8 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    kl_coef = cfg.get("kl_coef", 0.0)
+
     print(f"Loading model: {cfg['model_name']}")
     tokenizer = AutoTokenizer.from_pretrained(cfg["model_name"])
     model = AutoModelForCausalLM.from_pretrained(
@@ -41,6 +43,18 @@ def main():
     )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+
+    ref_model = None
+    if kl_coef > 0:
+        print(f"Loading frozen reference model (kl_coef={kl_coef})...")
+        ref_model = AutoModelForCausalLM.from_pretrained(
+            cfg["model_name"],
+            dtype=torch.float32,
+            device_map="auto",
+        )
+        ref_model.eval()
+        for p in ref_model.parameters():
+            p.requires_grad = False
 
     print("Setting up LoRA...")
     model = setup_lora(
@@ -61,6 +75,8 @@ def main():
               f"reward={metrics['avg_reward']:.4f} acc={metrics['accuracy']:.3f}")
 
     print("\n=== Starting GRPO Training ===")
+    if kl_coef > 0:
+        print(f"  KL regularization enabled (coef={kl_coef})")
     history = train_grpo(
         model, tokenizer, train_data,
         num_epochs=cfg.get("num_epochs", 3),
@@ -72,6 +88,8 @@ def main():
         learning_rate=cfg.get("learning_rate", 1e-4),
         save_path=str(output_dir / "final"),
         log_callback=log_callback,
+        ref_model=ref_model,
+        kl_coef=kl_coef,
     )
 
     (output_dir / "training_history.json").write_text(

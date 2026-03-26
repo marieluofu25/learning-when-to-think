@@ -1,0 +1,19 @@
+model_name: "Qwen/Qwen2.5-0.5B-Instruct"
+
+dataset: "gsm8k"
+train_subset_size: 2000
+eval_subset_size: 200
+
+max_steps: 5
+max_tokens_per_step: 512
+
+num_rollouts_per_problem: 8
+lambda_cost: 0.02
+kl_coef: 0.001
+learning_rate: 1.0e-6
+num_epochs: 5
+batch_size: 4
+lora_rank: 16
+lora_alpha: 32
+
+self_consistency_k: 5

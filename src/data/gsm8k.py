@@ -48,6 +48,22 @@ def extract_predicted_number(text: str) -> float | None:
         return None
 
 
+def extract_hash_answer(text: str) -> float | None:
+    """Extract answer from #### <number> format in model output.
+
+    Returns None if the format is not found.
+    """
+    m = _ANSWER_RE.search(text)
+    if m:
+        return float(m.group(1).replace(",", ""))
+    return None
+
+
+def has_valid_format(text: str) -> bool:
+    """Check if the model output contains exactly one #### marker."""
+    return text.count("####") == 1 and _ANSWER_RE.search(text) is not None
+
+
 def grade_answer(predicted: float | None, gold: float, tol: float = 1e-3) -> bool:
     if predicted is None:
         return False

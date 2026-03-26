@@ -9,8 +9,8 @@ SYSTEM_PROMPT = (
     "You are a math problem solver. You solve problems step by step. "
     "After each reasoning step, you must decide: output <continue> to keep "
     "reasoning, or <terminate> to give your final numerical answer.\n"
-    "When you output <terminate>, the very next line must be your final "
-    "numerical answer and nothing else."
+    "When you output <terminate>, end your solution with #### <number> "
+    "on its own line, where <number> is your final numerical answer."
 )
 
 DECISION_PROMPT = "\nShould I continue reasoning or give my final answer? Output <continue> or <terminate>: "
@@ -104,7 +104,7 @@ def cot_generate(
 ) -> dict:
     """Single-pass chain-of-thought baseline."""
     messages = [
-        {"role": "system", "content": "You are a math problem solver. Solve step by step, then give the final numerical answer on the last line."},
+        {"role": "system", "content": "You are a math problem solver. Solve step by step. End your solution with #### <number> on its own line, where <number> is your final numerical answer."},
         {"role": "user", "content": question},
     ]
     prompt_text = tokenizer.apply_chat_template(

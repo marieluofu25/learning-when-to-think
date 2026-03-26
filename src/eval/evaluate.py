@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 from collections import Counter
 from pathlib import Path
 
-from src.data.gsm8k import extract_predicted_number, grade_answer
+from src.data.gsm8k import extract_hash_answer, extract_predicted_number, grade_answer, has_valid_format
+
+
+def wilson_ci(n_correct: int, n_total: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score confidence interval for a binomial proportion."""
+    if n_total == 0:
+        return (0.0, 0.0)
+    p_hat = n_correct / n_total
+    denom = 1 + z * z / n_total
+    center = (p_hat + z * z / (2 * n_total)) / denom
+    spread = z * math.sqrt((p_hat * (1 - p_hat) + z * z / (4 * n_total)) / n_total) / denom
+    return (max(0.0, center - spread), min(1.0, center + spread))
 
 
 def evaluate_results(results: list[dict]) -> dict:
@@ -20,14 +32,28 @@ def evaluate_results(results: list[dict]) -> dict:
     cost_per_correct = total_tokens / max(correct, 1)
     avg_steps = sum(r.get("num_steps", 1) for r in results) / max(total, 1)
 
+    texts = [r.get("answer_text", "") for r in results]
+    format_ok = sum(1 for t in texts if has_valid_format(t))
+    parse_fail = sum(
+        1 for t in texts
+        if extract_hash_answer(t) is None and extract_predicted_number(t) is None
+    )
+    multi_hash = sum(1 for t in texts if t.count("####") > 1)
+
+    ci_lo, ci_hi = wilson_ci(correct, total)
+
     return {
         "total": total,
         "correct": correct,
         "accuracy": accuracy,
+        "accuracy_ci_95": [round(ci_lo, 4), round(ci_hi, 4)],
         "total_tokens": total_tokens,
         "avg_tokens_per_problem": avg_tokens,
         "cost_per_correct_answer": cost_per_correct,
         "avg_steps": avg_steps,
+        "format_success_rate": format_ok / max(total, 1),
+        "parse_fail_rate": parse_fail / max(total, 1),
+        "multi_answer_rate": multi_hash / max(total, 1),
     }
 
 
