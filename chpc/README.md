@@ -1,6 +1,6 @@
 # Running on CHPC (University of Utah)
 
-Copy/paste workflow for **Qwen2.5-Math-7B-Instruct** + **4-bit QLoRA** GRPO training and eval. Adjust `uNID`, account, and partition using `mychpc batch` (or your course instructions).
+Copy/paste workflow for **Qwen2.5-Math-7B-Instruct** + **4-bit QLoRA** GRPO training and eval. Adjust `uNID` if needed. Examples use **`--account=cs6966`** and **`--partition=granite-gpu-guest`**; confirm with `mychpc batch` and substitute your real Slurm account if it differs.
 
 ## Connect
 
@@ -8,20 +8,24 @@ Copy/paste workflow for **Qwen2.5-Math-7B-Instruct** + **4-bit QLoRA** GRPO trai
 ssh <uNID>@granite.chpc.utah.edu
 ```
 
-Use your assigned cluster hostname if different (e.g. notchpeak login node).
+Use your assigned login hostname if different.
 
-## Valid account / partition
+## Granite GPU (guest): account + partition + QoS
+
+Examples use **`--account=cs6966`**, **`--partition=granite-gpu-guest`**, and **`--qos=granite-gpu-guest`**. The committed `.slurm` files still default to older Notchpeak names—**always pass overrides on the `sbatch` line** (or edit `#SBATCH` in the scripts).
 
 ```bash
 mychpc batch
 ```
 
-Pick a GPU partition you are allowed to use. Submit with explicit flags if the defaults in the `.slurm` files are wrong:
+Pick the GPU partition and account you are allowed to use, then submit, e.g.:
 
 ```bash
-sbatch --account=YOUR_ACCOUNT --partition=YOUR_GPU_PARTITION \
+sbatch --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
   chpc/train_grpo.slurm configs/chpc_debug.yaml checkpoints/grpo_debug
 ```
+
+If your Slurm account string differs, substitute the exact value from `mychpc batch`.
 
 ## Modules
 
@@ -56,10 +60,10 @@ export HF_HOME=/scratch/general/vast/$USER/hf_cache
 mkdir -p "$HF_HOME"
 ```
 
-Gated models (e.g. Llama) need a token:
+Gated models (e.g. Llama) need a token (do not commit real tokens to git):
 
 ```bash
-export HF_TOKEN=...
+export HF_TOKEN=hf_...
 ```
 
 ## Training (SLURM)
@@ -72,10 +76,12 @@ Configs:
 
 ```bash
 # Debug
-sbatch chpc/train_grpo.slurm configs/chpc_debug.yaml checkpoints/grpo_debug
+sbatch --account=6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
+  chpc/train_grpo.slurm configs/chpc_debug.yaml checkpoints/grpo_debug
 
-# Full (edit #SBATCH account/partition or override on sbatch line)
-sbatch chpc/train_grpo.slurm configs/chpc_grpo.yaml checkpoints/grpo_chpc
+# Full training
+sbatch --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
+  chpc/train_grpo.slurm configs/chpc_grpo.yaml checkpoints/grpo_chpc
 ```
 
 Positional arguments to the batch script: `[config_path] [output_dir]`.
@@ -85,7 +91,8 @@ Positional arguments to the batch script: `[config_path] [output_dir]`.
 Arguments: `[config] [checkpoint] [results_dir]`.
 
 ```bash
-sbatch chpc/eval.slurm \
+sbatch --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
+  chpc/eval.slurm \
   configs/chpc_grpo.yaml \
   checkpoints/grpo_chpc/final \
   results/eval_chpc
@@ -94,7 +101,8 @@ sbatch chpc/eval.slurm \
 HumanEval example (config must set `dataset: humaneval`):
 
 ```bash
-sbatch chpc/eval.slurm configs/eval_humaneval.yaml checkpoints/grpo_chpc/final results/eval_he
+sbatch --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
+  chpc/eval.slurm configs/eval_humaneval.yaml checkpoints/grpo_chpc/final results/eval_he
 ```
 
 ## Monitor
@@ -114,8 +122,8 @@ rsync -avz <uNID>@granite.chpc.utah.edu:~/learning-when-to-think/checkpoints/ ./
 ## Interactive GPU shell
 
 ```bash
-srun --account=YOUR_ACCOUNT --partition=YOUR_GPU_PARTITION --gres=gpu:1 \
-  --cpus-per-task=4 --mem=64G --time=01:00:00 --pty bash
+srun --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
+  --gres=gpu:1 --cpus-per-task=4 --mem=64G --time=01:00:00 --pty bash
 ```
 
 Then activate `.venv`, set `HF_HOME`, and run e.g. `python scripts/train.py --config configs/chpc_debug.yaml --output-dir checkpoints/grpo_debug`.
