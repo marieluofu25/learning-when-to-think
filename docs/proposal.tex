@@ -28,11 +28,10 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{amsmath}
-\usepackage{amsfonts}
 \usepackage{amssymb}
 \usepackage{graphicx}
 
-\title{Learning When to Think: Reinforcement Learning for Adaptive Reasoning Computation in LLMs}
+\title{Learning When to Think: RL for Adaptive Reasoning Computation in LLMs}
 
 \author{%
   Ivan Andhika \\
@@ -56,113 +55,72 @@
 \maketitle
 
 \begin{abstract}
-Large language models (LLMs) can improve reasoning performance by increasing test-time computation---generating longer chains of reasoning or sampling multiple candidate solutions. However, most approaches allocate a \emph{fixed} amount of computation for every input, which is inefficient: simple problems receive unnecessary reasoning while difficult problems may require additional exploration. We investigate whether reinforcement learning (RL) can train LLMs to \emph{adaptively} allocate reasoning computation during inference. We formulate reasoning as a sequential decision-making problem in which the model chooses among actions---continuing reasoning, verifying an intermediate result, sampling an alternative solution, or terminating---and learn a policy that dynamically determines how much effort each problem receives. Training uses RL with a reward that balances answer correctness against computational cost. We evaluate on GSM8K using Qwen2.5-0.5B with LoRA fine-tuning, comparing the learned adaptive policy against fixed-compute baselines including standard chain-of-thought and self-consistency sampling. We assess both task accuracy and compute efficiency, reporting metrics such as reasoning token usage and cost-per-correct-answer across problem difficulty levels.
+Large language models (LLMs) improve reasoning by increasing test-time computation, yet most approaches allocate a fixed compute budget to every input. Simple problems receive unnecessary reasoning while hard problems may need more exploration. We investigate whether reinforcement learning can train LLMs to adaptively allocate reasoning computation during inference. We formulate reasoning as a sequential decision problem where the model chooses among actions---continue reasoning, verify an intermediate result, sample an alternative solution, or terminate---learning a policy that dynamically determines how much effort each problem receives. We train with a reward balancing correctness against token cost and evaluate on GSM8K using Qwen2.5-0.5B with LoRA, comparing against chain-of-thought and self-consistency baselines on both accuracy and compute efficiency.
 \end{abstract}
 
 \section{Introduction}
 
-Recent work has demonstrated that increasing the amount of computation a language model expends at inference time can substantially improve its reasoning capabilities~\cite{wei2022chainofthought, snell2025scaling}. Techniques such as chain-of-thought (CoT) prompting~\cite{wei2022chainofthought}, self-consistency decoding~\cite{wang2023selfconsistency}, and iterative self-refinement~\cite{kumar2025training} have shown that \emph{thinking more} often leads to better answers on tasks requiring multi-step reasoning.
+Increasing test-time computation improves LLM reasoning. Chain-of-thought (CoT) prompting~\citep{wei2022chainofthought}, self-consistency decoding~\citep{wang2023selfconsistency}, and iterative self-refinement~\citep{kumar2025training} all show that \emph{thinking more} leads to better answers. Snell et al.~\citep{snell2025scaling} further demonstrated that adaptive per-problem compute allocation can outperform simply scaling model parameters.
 
-However, these methods typically apply a uniform computation budget to every input. A one-step arithmetic problem receives the same lengthy chain-of-thought treatment as a complex eight-step word problem, and self-consistency always samples a fixed number $k$ of candidate solutions regardless of difficulty. This rigidity wastes computation on easy inputs and may under-allocate effort on hard ones. The problem is especially acute for smaller models deployed under resource constraints, where every token of wasted computation has a meaningful cost.
+However, existing methods apply a \emph{uniform} computation budget. A one-step arithmetic problem gets the same CoT treatment as an eight-step word problem, and self-consistency always samples $k$ solutions regardless of difficulty. This wastes compute on easy inputs and under-allocates on hard ones---a problem especially acute for smaller models under resource constraints.
 
-This inefficiency motivates a natural question: \emph{can a language model learn to decide, for each problem, how much reasoning effort to invest?} We frame this as a reinforcement learning problem. At each step of its reasoning process, the model acts as an agent that selects from a discrete set of actions: \textbf{continue} reasoning, \textbf{verify} the current intermediate result, try an \textbf{alternative} solution path, or \textbf{terminate} and output a final answer. The reward signal balances correctness against token cost, incentivizing the model to be both accurate and efficient.
+We ask: \emph{can an LLM learn to decide how much to think per problem?} We frame this as an RL problem where the model selects from four actions at each reasoning step: \textbf{continue}, \textbf{verify}, \textbf{alternative}, or \textbf{terminate}. The reward balances correctness against token cost. This connects RL and sequential decision-making with LLM reasoning, and relates to the exploration--exploitation trade-off: the model must decide whether to exploit its current reasoning (terminate) or explore further.
 
-This problem is directly relevant to the themes of this course (CS 5955/6955: Advanced AI). It connects reinforcement learning---particularly policy optimization in sequential decision-making---with modern large language models. The adaptive computation question also relates to exploration--exploitation trade-offs studied in multi-armed bandits: the model must decide whether to ``exploit'' its current reasoning (terminate) or ``explore'' further (continue, verify, or try an alternative).
-
-Our contributions are: (1) a formulation of adaptive test-time computation as an RL problem with a structured action space; (2) an empirical comparison of training approaches including supervised fine-tuning (SFT), Direct Preference Optimization (DPO), and Group Relative Policy Optimization (GRPO); and (3) a difficulty-aware evaluation framework that analyzes whether the learned policy allocates more computation to harder problems.
+Our contributions: (1)~a formulation of adaptive test-time computation as an RL problem with a four-action space; (2)~empirical comparison of SFT, DPO, and GRPO training approaches; and (3)~a difficulty-aware evaluation analyzing whether the policy allocates more compute to harder problems.
 
 \section{Related Work}
 
-\textbf{Chain-of-thought reasoning.} Wei et al.~\cite{wei2022chainofthought} demonstrated that prompting LLMs to produce intermediate reasoning steps dramatically improves performance on arithmetic, commonsense, and symbolic reasoning tasks. Wang et al.~\cite{wang2023selfconsistency} extended this with self-consistency, which samples multiple reasoning paths and selects the answer by majority vote. Both methods use a fixed computation budget per problem. Our work aims to make this budget adaptive.
+\textbf{Chain-of-thought and self-consistency.} Wei et al.~\citep{wei2022chainofthought} showed that intermediate reasoning steps dramatically improve LLM performance. Wang et al.~\citep{wang2023selfconsistency} extended this by sampling multiple paths and taking majority vote. Both use fixed compute budgets; we aim to make the budget adaptive.
 
-\textbf{Test-time compute scaling.} Snell et al.~\cite{snell2025scaling} showed that optimally allocating test-time compute on a per-problem basis can be more effective than scaling model parameters, with a smaller model using adaptive compute outperforming a 14$\times$ larger model. Their work provides theoretical motivation for our approach but focuses on search-based strategies rather than learning an explicit policy via RL.
+\textbf{RL for LLM reasoning.} DeepSeek-R1~\citep{deepseek2025r1} showed that RL alone can incentivize emergent reasoning behaviors including self-reflection. DeepSeekMath~\citep{shao2024deepseekmath} introduced Group Relative Policy Optimization (GRPO), computing advantages relative to a group of rollouts without a separate critic. Kumar et al.~\citep{kumar2025training} proposed SCoRe for RL-based self-correction. We adopt GRPO as one of our training methods.
 
-\textbf{RL for LLM reasoning.} DeepSeek-R1~\cite{deepseek2025r1} demonstrated that reinforcement learning alone---without supervised reasoning traces---can incentivize emergent reasoning behaviors including self-reflection and verification. DeepSeekMath~\cite{shao2024deepseekmath} introduced Group Relative Policy Optimization (GRPO), which computes advantages relative to a group of rollouts rather than requiring a separate critic model, reducing memory overhead. We adopt GRPO as one of our training methods. Kumar et al.~\cite{kumar2025training} proposed SCoRe, a multi-turn RL method for training self-correction, showing that RL can teach models to iteratively improve their own outputs.
+\textbf{Adaptive reasoning depth.} Fang et al.~\citep{fang2025thinkless} proposed \emph{Thinkless}, training an LLM to choose between short and extended thinking via two control tokens, reducing extended thinking by 50--90\%. Xiang et al.~\citep{xiang2025justenough} introduced Adaptive Length Penalties scaling inversely with per-prompt solve rate. Our approach differs by defining a \emph{richer action space} (four actions vs.\ binary), enabling finer-grained control.
 
-\textbf{Adaptive reasoning depth.} Most closely related to our work, Fang et al.~\cite{fang2025thinkless} proposed \emph{Thinkless}, which trains an LLM to choose between short-form and extended thinking using two control tokens and a Decoupled GRPO algorithm, reducing extended thinking by 50--90\%. Xiang et al.~\cite{xiang2025justenough} introduced Adaptive Length Penalties (ALP) that scale inversely with per-prompt solve rate, cutting token usage by $\sim$50\%. Our approach differs from Thinkless in that we define a \emph{richer action space} with four distinct actions (continue, verify, alternative, terminate) rather than a binary short/long decision, enabling finer-grained control over the reasoning process.
-
-\textbf{Process supervision.} Lightman et al.~\cite{lightman2024lets} showed that providing step-level feedback (process supervision) significantly outperforms outcome-only supervision for training reward models on mathematical reasoning. This motivates our inclusion of a \emph{verify} action that allows the model to pause and evaluate intermediate steps.
-
-\textbf{Reasoning and acting.} Yao et al.~\cite{yao2023react} proposed ReAct, which interleaves reasoning traces with task-specific actions. Our formulation shares the insight that reasoning should be an active, decision-driven process, but we focus specifically on controlling the \emph{depth} and \emph{style} of reasoning rather than interfacing with external tools.
+\textbf{Process supervision and reasoning as acting.} Lightman et al.~\citep{lightman2024lets} showed step-level feedback outperforms outcome-only supervision, motivating our \emph{verify} action. Yao et al.~\citep{yao2023react} proposed ReAct, interleaving reasoning and actions; we apply this insight to controlling reasoning depth rather than external tool use.
 
 \section{Method}
 
 \subsection{Problem Formulation}
 
-We model the reasoning process as a Markov Decision Process (MDP). Given a problem $q$, the agent (LLM) generates a sequence of reasoning steps. At each step $t$, the state $s_t$ consists of the problem text and all reasoning generated so far. The agent selects an action $a_t$ from the action space $\mathcal{A} = \{\texttt{continue}, \texttt{verify}, \texttt{alternative}, \texttt{terminate}\}$:
-
-\begin{itemize}
-    \item \textbf{Continue}: Extend the current chain of reasoning by generating an additional reasoning step.
-    \item \textbf{Verify}: Prompt the model to check its most recent intermediate result before proceeding.
-    \item \textbf{Alternative}: Discard the current reasoning path and sample a fresh solution attempt.
-    \item \textbf{Terminate}: Stop reasoning and extract the final answer from the current context.
-\end{itemize}
-
-The episode ends when the agent selects \texttt{terminate} or reaches a maximum step limit $T$.
+We model reasoning as an MDP. Given problem $q$, the state $s_t$ is the problem text plus all reasoning so far. The agent selects $a_t \in \mathcal{A} = \{\texttt{continue}, \texttt{verify}, \texttt{alternative}, \texttt{terminate}\}$. \textbf{Continue} extends the chain of thought. \textbf{Verify} checks the current intermediate result. \textbf{Alternative} discards the current path and samples a fresh attempt. \textbf{Terminate} outputs the final answer. The episode ends at \texttt{terminate} or step limit $T$.
 
 \subsection{Reward Function}
 
-Upon termination, the agent receives a reward that balances correctness and efficiency:
+The reward balances correctness and efficiency:
 \begin{equation}
-    R = \underbrace{r_{\text{acc}}}_{\text{correctness}} + \underbrace{r_{\text{fmt}}}_{\text{format bonus}} - \underbrace{\lambda \cdot \frac{n_{\text{tokens}}}{n_{\text{max}}}}_{\text{cost penalty (if correct)}}
+    R = r_{\text{acc}} + r_{\text{fmt}} - \lambda \cdot \frac{n_{\text{tokens}}}{n_{\text{max}}}
 \end{equation}
-where $r_{\text{acc}} = 1$ if the predicted answer matches the gold answer (within tolerance) and $0$ otherwise, $r_{\text{fmt}} = 0.1$ if the output follows the expected answer format, $\lambda$ is a hyperparameter controlling the accuracy--efficiency trade-off, and $n_{\text{tokens}}$ is the total number of tokens generated. Crucially, the cost penalty is applied \emph{only when the answer is correct}, so the model is not penalized for exploring on problems it cannot yet solve.
+where $r_{\text{acc}} \in \{0, 1\}$ indicates answer correctness, $r_{\text{fmt}} = 0.1$ for proper output format, and the cost penalty (weighted by $\lambda$) applies \emph{only when correct}---the model is not penalized for exploring on problems it cannot yet solve.
 
 \subsection{Training Approaches}
 
-We investigate three training methods, each building on the previous:
+\textbf{SFT:} Fine-tune Qwen2.5-0.5B-Instruct on teacher reasoning traces (Gemini 2.5 Flash or GSM8K gold solutions) using LoRA (rank~16) on attention layers.
 
-\textbf{Supervised Fine-Tuning (SFT).} We first distill reasoning capabilities from a stronger teacher model (Gemini 2.5 Flash) or from GSM8K's gold step-by-step solutions. The student model (Qwen2.5-0.5B-Instruct) is fine-tuned on these traces using LoRA (rank 16) on the attention projection layers.
+\textbf{DPO}~\citep{rafailov2023direct}\textbf{:} Generate multiple solutions per problem from the SFT model; correct answers become ``chosen'' and incorrect become ``rejected'' examples, training the model to prefer correct solutions.
 
-\textbf{Direct Preference Optimization (DPO).} After SFT, we generate multiple candidate solutions per problem. Correct answers form ``chosen'' examples and incorrect answers form ``rejected'' examples. DPO~\cite{rafailov2023direct} trains the model to prefer correct solutions without requiring an explicit reward model.
-
-\textbf{Group Relative Policy Optimization (GRPO).} Following Shao et al.~\cite{shao2024deepseekmath}, we generate $K$ rollouts per problem, score each with the reward function, compute group-normalized advantages, and update the policy to increase the probability of high-reward rollouts. GRPO avoids the memory cost of a separate critic model, making it feasible for our compute budget.
+\textbf{GRPO}~\citep{shao2024deepseekmath}\textbf{:} Generate $K{=}4$ rollouts per problem, score with the reward function, compute group-normalized advantages, and update LoRA weights. No separate critic model is needed.
 
 \section{Experimental Design}
 
 \subsection{Hypotheses}
 
-We test the following hypotheses:
-
 \begin{enumerate}
-    \item \textbf{H1 (Adaptive compute)}: An RL-trained adaptive policy will achieve a better accuracy--efficiency trade-off than fixed-compute baselines (CoT, self-consistency) on GSM8K, measured by cost-per-correct-answer.
-    \item \textbf{H2 (Difficulty sensitivity)}: The adaptive policy will learn to allocate more tokens to harder problems and fewer tokens to easier problems, as measured by a positive correlation between ground-truth problem difficulty and average tokens generated.
-    \item \textbf{H3 (Action specialization)}: The distribution of selected actions will vary with problem difficulty---the model will \texttt{terminate} earlier on easy problems and use \texttt{verify}/\texttt{alternative} more frequently on hard problems.
+    \item \textbf{H1:} The adaptive policy achieves a better accuracy--efficiency trade-off than fixed-compute baselines, measured by cost-per-correct-answer on GSM8K.
+    \item \textbf{H2:} The adaptive policy allocates more tokens to harder problems and fewer to easier ones, showing positive correlation between ground-truth difficulty and tokens generated.
+    \item \textbf{H3:} Action distributions vary with difficulty---more \texttt{terminate} on easy problems, more \texttt{verify}/\texttt{alternative} on hard problems.
 \end{enumerate}
 
-\subsection{Domain and Data}
+\subsection{Domain, Setup, and Evaluation}
 
-All experiments use the GSM8K benchmark~\cite{cobbe2021gsm8k}, which contains 8,792 grade-school math word problems with human-written step-by-step solutions. Problems range from 1-step arithmetic to 8+ step multi-part reasoning, providing natural variation in difficulty. We classify problems by counting calculation steps (annotated as \texttt{<<expr=result>>}) in the gold solutions and binning into \emph{easy} ($\leq 2$ steps), \emph{medium} (3--4 steps), and \emph{hard} ($\geq 5$ steps).
+We use GSM8K~\citep{cobbe2021gsm8k} (8,792 grade-school math problems). We classify difficulty by counting calculation steps in gold solutions: \emph{easy} ($\leq$2), \emph{medium} (3--4), \emph{hard} ($\geq$5). Base model is Qwen2.5-0.5B-Instruct with LoRA ($r{=}16$, $\alpha{=}32$).
 
-\subsection{Experimental Setup}
+\textbf{Baselines:} (1)~CoT: single-pass chain-of-thought (512 token budget); (2)~Self-consistency ($k{=}5$): majority vote over 5 sampled solutions.
 
-\textbf{Base model:} Qwen2.5-0.5B-Instruct with LoRA fine-tuning (rank 16, $\alpha=32$) on attention layers.
+\textbf{Our methods:} (1)~SFT~+~DPO; (2)~GRPO with adaptive action selection.
 
-\textbf{Baselines:}
-\begin{itemize}
-    \item \textbf{CoT baseline}: Single-pass chain-of-thought generation (fixed 512 token budget).
-    \item \textbf{Self-consistency ($k=5$)}: Sample 5 independent CoT solutions and take the majority vote.
-\end{itemize}
+\textbf{Metrics:} Accuracy, average tokens per problem, cost-per-correct-answer, and all metrics broken down by difficulty bin. We evaluate on 200 GSM8K test problems with 95\% Wilson confidence intervals. Ablations over $\lambda \in \{0.01, 0.05, 0.1, 0.2\}$ and max steps $T \in \{3, 5, 7\}$ characterize the accuracy--efficiency trade-off.
 
-\textbf{Our methods:}
-\begin{itemize}
-    \item \textbf{SFT + DPO}: Distillation followed by preference optimization.
-    \item \textbf{GRPO}: Direct RL training with group-relative advantages and KL regularization.
-\end{itemize}
-
-\subsection{Evaluation Metrics}
-
-\begin{itemize}
-    \item \textbf{Accuracy}: Fraction of problems answered correctly.
-    \item \textbf{Average tokens}: Mean tokens generated per problem.
-    \item \textbf{Cost-per-correct}: Total tokens divided by number of correct answers (lower is more efficient).
-    \item \textbf{Difficulty-conditioned metrics}: All of the above broken down by easy/medium/hard bins.
-    \item \textbf{Action distribution}: Frequency of each action type by difficulty level.
-\end{itemize}
-
-We evaluate on 200 problems from the GSM8K test set and report 95\% Wilson score confidence intervals for accuracy. Ablations over $\lambda \in \{0.01, 0.05, 0.1, 0.2\}$ and maximum steps $T \in \{3, 5, 7\}$ will characterize the sensitivity of the accuracy--efficiency trade-off.
-
-\bibliographystyle{plain}
+\bibliographystyle{plainnat}
 \bibliography{sample}
 
 \end{document}
