@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "accelerate>=1.13.0",
+    "bitsandbytes>=0.45.0",
     "datasets>=4.8.4",
     "google-genai>=1.68.0",
     "matplotlib>=3.10.8",

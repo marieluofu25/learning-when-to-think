@@ -1,0 +1,13 @@
+# Evaluate on HumanEval (use same base + QLoRA as training).
+model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
+dataset: "humaneval"
+eval_subset_size: null
+use_qlora: true
+torch_dtype: "bfloat16"
+checkpoint_path: "checkpoints/grpo_chpc/final"
+eval_output_dir: "results/eval_humaneval"
+
+max_steps: 5
+max_tokens_per_step: 512
+disable_tools: false
+humaneval_max_tokens: 512

@@ -1,11 +1,13 @@
 #!/bin/bash
+# Args: [config] [checkpoint] [results_dir]
+#   sbatch chpc/eval.slurm configs/chpc_grpo.yaml checkpoints/grpo_chpc/final results/eval_chpc
 #SBATCH --job-name=grpo-eval
 #SBATCH --account=notchpeak-shared-short
 #SBATCH --partition=notchpeak-shared-short
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --cpus-per-task=4
-#SBATCH --time=2:00:00
+#SBATCH --time=4:00:00
 #SBATCH --output=slurm-%j.out
 
 # --- Modules ---
@@ -19,18 +21,19 @@ source .venv/bin/activate
 export HF_HOME=/scratch/general/vast/$USER/hf_cache
 export PYTHONUNBUFFERED=1
 
-# --- Config ---
 CONFIG=${1:-configs/chpc_grpo.yaml}
-RESULTS_DIR=${2:-results/eval_chpc}
+CHECKPOINT=${2:-checkpoints/grpo_chpc/final}
+RESULTS_DIR=${3:-results/eval_chpc}
 
 echo "=== Evaluation ==="
-echo "Config:  $CONFIG"
-echo "Results: $RESULTS_DIR"
+echo "Config:     $CONFIG"
+echo "Checkpoint: $CHECKPOINT"
+echo "Results:    $RESULTS_DIR"
 echo "Node:    $(hostname)"
 echo "GPU:     $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || echo 'N/A')"
 echo "Start:   $(date)"
 echo "========================"
 
-python scripts/eval.py --config "$CONFIG" --output-dir "$RESULTS_DIR"
+python scripts/eval.py --config "$CONFIG" --checkpoint "$CHECKPOINT" --output-dir "$RESULTS_DIR"
 
 echo "=== Done: $(date) ==="

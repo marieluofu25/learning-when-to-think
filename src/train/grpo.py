@@ -1,10 +1,4 @@
-"""GRPO (Group Relative Policy Optimization) training with LoRA + KL regularization.
-
-Pipeline:
-- Generate K rollouts per problem using the current policy (no grad)
-- Score each rollout: reward = correctness + format_bonus - lambda * cost (only when correct)
-- Recompute log probs with gradients, compute GRPO advantages + KL penalty, update LoRA weights
-"""
+"""GRPO (Group Relative Policy Optimization) training with LoRA + KL regularization."""
 
 from __future__ import annotations
 
@@ -14,12 +8,7 @@ from transformers import PreTrainedModel, PreTrainedTokenizerBase
 from peft import LoraConfig, get_peft_model, TaskType
 
 from src.data.gsm8k import extract_hash_answer, extract_predicted_number, grade_answer, has_valid_format
-from src.policy.adaptive import (
-    SYSTEM_PROMPT,
-    DECISION_PROMPT,
-    TERMINATE_TOKEN,
-    build_initial_messages,
-)
+from src.policy.adaptive import adaptive_rollout
 
 
 def setup_lora(model: PreTrainedModel, rank: int = 16, alpha: int = 32) -> PreTrainedModel:
@@ -35,65 +24,6 @@ def setup_lora(model: PreTrainedModel, rank: int = 16, alpha: int = 32) -> PreTr
     return model
 
 
-@torch.inference_mode()
-def generate_rollout(
-    model: PreTrainedModel,
-    tokenizer: PreTrainedTokenizerBase,
-    question: str,
-    max_steps: int = 5,
-    max_tokens_per_step: int = 256,
-    temperature: float = 1.0,
-) -> dict:
-    """Generate a single rollout, collecting the full token sequence (no grad)."""
-    model.eval()
-    messages = build_initial_messages(question)
-    all_generated_ids: list[list[int]] = []
-    all_prompt_lengths: list[int] = []
-    total_tokens = 0
-    final_text_parts: list[str] = []
-
-    for step in range(max_steps):
-        prompt_text = tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
-        inputs = tokenizer(prompt_text, return_tensors="pt").to(model.device)
-        input_len = inputs["input_ids"].shape[1]
-
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=max_tokens_per_step,
-            temperature=temperature,
-            do_sample=True,
-            top_p=0.9,
-            pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
-        )
-
-        new_ids = outputs[0][input_len:].tolist()
-        if not new_ids:
-            break
-        total_tokens += len(new_ids)
-        all_generated_ids.append(new_ids)
-        all_prompt_lengths.append(input_len)
-
-        response = tokenizer.decode(new_ids, skip_special_tokens=True).strip()
-        final_text_parts.append(response)
-
-        if TERMINATE_TOKEN in response:
-            break
-
-        messages.append({"role": "assistant", "content": response})
-        messages.append({"role": "user", "content": DECISION_PROMPT})
-
-    full_text = " ".join(final_text_parts)
-    return {
-        "text": full_text,
-        "total_tokens": total_tokens,
-        "messages_history": messages,
-        "generated_ids": all_generated_ids,
-        "prompt_lengths": all_prompt_lengths,
-    }
-
-
 def recompute_log_probs(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizerBase,
@@ -101,11 +31,7 @@ def recompute_log_probs(
     generated_ids: list[list[int]],
     prompt_lengths: list[int],
 ) -> torch.Tensor:
-    """Recompute log probs for the generated tokens WITH gradients.
-
-    We reconstruct the full sequence (prompt + generated) for the final step
-    and compute log P(generated | prompt) to keep things tractable.
-    """
+    """Recompute log probs for the generated tokens WITH gradients."""
     prompt_text = tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
@@ -136,20 +62,19 @@ def compute_reward(
     text: str,
     gold_answer: float,
     total_tokens: int,
-    max_tokens: int,
-    lambda_cost: float = 0.1,
+    n_tool_calls: int,
+    lambda_cost: float = 1e-5,
+    mu_tool: float = 0.05,
+    format_bonus: float = 0.05,
 ) -> float:
-    # Try strict #### parse first, fall back to last-number extraction
+    """R ≈ r_correct + format_bonus − λ·n_tokens − μ·n_tool_calls (proposal-style)."""
     predicted = extract_hash_answer(text)
     if predicted is None:
         predicted = extract_predicted_number(text)
 
     r_acc = 1.0 if grade_answer(predicted, gold_answer) else 0.0
-    r_fmt = 0.1 if has_valid_format(text) else 0.0
-    cost = lambda_cost * min(1.0, total_tokens / max(max_tokens, 1))
-
-    # Length penalty only when correct (don't punish exploration on wrong answers)
-    return r_acc + r_fmt - (cost if r_acc > 0 else 0.0)
+    r_fmt = format_bonus if has_valid_format(text) else 0.0
+    return r_acc + r_fmt - lambda_cost * float(total_tokens) - mu_tool * float(n_tool_calls)
 
 
 @torch.inference_mode()
@@ -191,29 +116,40 @@ def grpo_step(
     num_rollouts: int = 4,
     max_steps: int = 5,
     max_tokens_per_step: int = 256,
-    lambda_cost: float = 0.1,
+    lambda_cost: float = 1e-5,
+    mu_tool: float = 0.05,
     ref_model: PreTrainedModel | None = None,
     kl_coef: float = 0.0,
+    disable_tools: bool = False,
+    do_optimizer_step: bool = True,
 ) -> dict:
     """One GRPO update step over a batch of questions."""
-    max_total_tokens = max_steps * max_tokens_per_step
     total_loss = 0.0
     total_reward = 0.0
     total_correct = 0
     total_items = 0
     total_kl = 0.0
+    grad_steps = 0
 
     for item in questions:
         rollouts = []
         for _ in range(num_rollouts):
-            rollout = generate_rollout(
-                model, tokenizer, item["question"],
+            rollout = adaptive_rollout(
+                model,
+                tokenizer,
+                item["question"],
                 max_steps=max_steps,
                 max_tokens_per_step=max_tokens_per_step,
+                temperature=1.0,
+                disable_tools=disable_tools,
             )
             reward = compute_reward(
-                rollout["text"], item["answer_number"],
-                rollout["total_tokens"], max_total_tokens, lambda_cost,
+                rollout["text"],
+                item["answer_number"],
+                rollout["total_tokens"],
+                rollout["n_tool_calls"],
+                lambda_cost=lambda_cost,
+                mu_tool=mu_tool,
             )
             rollout["reward"] = reward
             rollouts.append(rollout)
@@ -240,7 +176,8 @@ def grpo_step(
                 continue
 
             log_prob_sum = recompute_log_probs(
-                model, tokenizer,
+                model,
+                tokenizer,
                 rollout["messages_history"],
                 rollout["generated_ids"],
                 rollout["prompt_lengths"],
@@ -249,7 +186,8 @@ def grpo_step(
             kl_term = torch.tensor(0.0, device=model.device)
             if ref_model is not None and kl_coef > 0:
                 ref_log_prob = compute_ref_log_probs(
-                    ref_model, tokenizer,
+                    ref_model,
+                    tokenizer,
                     rollout["messages_history"],
                     rollout["generated_ids"],
                 )
@@ -259,13 +197,15 @@ def grpo_step(
             loss = -advantage * log_prob_sum + kl_coef * kl_term
             loss.backward()
             total_loss += loss.item()
+            grad_steps += 1
 
-    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-    optimizer.step()
-    optimizer.zero_grad()
+    if do_optimizer_step and grad_steps > 0:
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        optimizer.step()
+        optimizer.zero_grad()
 
     return {
-        "loss": total_loss / max(total_items, 1),
+        "loss": total_loss / max(grad_steps, 1),
         "avg_reward": total_reward / max(total_items, 1),
         "accuracy": total_correct / max(total_items, 1),
         "kl_mean": total_kl / max(total_items, 1),
@@ -281,34 +221,47 @@ def train_grpo(
     num_rollouts: int = 4,
     max_steps: int = 5,
     max_tokens_per_step: int = 256,
-    lambda_cost: float = 0.1,
+    lambda_cost: float = 1e-5,
+    mu_tool: float = 0.05,
     learning_rate: float = 1e-4,
     save_path: str | None = None,
     log_callback=None,
     ref_model: PreTrainedModel | None = None,
     kl_coef: float = 0.0,
+    gradient_accumulation_steps: int = 1,
+    disable_tools: bool = False,
 ) -> list[dict]:
-    """Full GRPO training loop with optional KL regularization."""
+    """Full GRPO training loop with optional KL regularization and grad accumulation."""
     optimizer = torch.optim.AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),
         lr=learning_rate,
     )
 
     history: list[dict] = []
+    accum = max(1, int(gradient_accumulation_steps))
 
     for epoch in range(num_epochs):
         epoch_metrics = {"loss": 0, "avg_reward": 0, "accuracy": 0, "kl_mean": 0, "steps": 0}
 
+        micro = 0
         for i in range(0, len(train_data), batch_size):
             batch = train_data[i : i + batch_size]
+            micro += 1
+            do_step = micro % accum == 0
             step_metrics = grpo_step(
-                model, tokenizer, batch, optimizer,
+                model,
+                tokenizer,
+                batch,
+                optimizer,
                 num_rollouts=num_rollouts,
                 max_steps=max_steps,
                 max_tokens_per_step=max_tokens_per_step,
                 lambda_cost=lambda_cost,
+                mu_tool=mu_tool,
                 ref_model=ref_model,
                 kl_coef=kl_coef,
+                disable_tools=disable_tools,
+                do_optimizer_step=do_step,
             )
 
             epoch_metrics["loss"] += step_metrics["loss"]
@@ -320,6 +273,11 @@ def train_grpo(
             if log_callback:
                 log_callback(epoch, i // batch_size, step_metrics)
 
+        if micro > 0 and micro % accum != 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
+            optimizer.zero_grad()
+
         n_steps = max(epoch_metrics["steps"], 1)
         epoch_summary = {
             "epoch": epoch,
@@ -329,10 +287,12 @@ def train_grpo(
             "avg_kl": epoch_metrics["kl_mean"] / n_steps,
         }
         history.append(epoch_summary)
-        print(f"Epoch {epoch}: loss={epoch_summary['avg_loss']:.4f} "
-              f"reward={epoch_summary['avg_reward']:.4f} "
-              f"accuracy={epoch_summary['avg_accuracy']:.4f} "
-              f"kl={epoch_summary['avg_kl']:.4f}")
+        print(
+            f"Epoch {epoch}: loss={epoch_summary['avg_loss']:.4f} "
+            f"reward={epoch_summary['avg_reward']:.4f} "
+            f"accuracy={epoch_summary['avg_accuracy']:.4f} "
+            f"kl={epoch_summary['avg_kl']:.4f}"
+        )
 
     if save_path:
         model.save_pretrained(save_path)

@@ -9,6 +9,7 @@ from collections import Counter
 from pathlib import Path
 
 from src.data.gsm8k import extract_hash_answer, extract_predicted_number, grade_answer, has_valid_format
+from src.data.humaneval import extract_humaneval_completion, passes_humaneval
 
 
 def wilson_ci(n_correct: int, n_total: int, z: float = 1.96) -> tuple[float, float]:
@@ -22,7 +23,18 @@ def wilson_ci(n_correct: int, n_total: int, z: float = 1.96) -> tuple[float, flo
     return (max(0.0, center - spread), min(1.0, center + spread))
 
 
-def evaluate_results(results: list[dict]) -> dict:
+def _merge_action_counts(results: list[dict]) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for r in results:
+        ac = r.get("action_counts")
+        if not ac:
+            continue
+        for k, v in ac.items():
+            out[k] = out.get(k, 0) + int(v)
+    return out
+
+
+def evaluate_results(results: list[dict], *, dataset_kind: str = "gsm8k") -> dict:
     """Compute aggregate metrics from a list of per-problem results."""
     total = len(results)
     correct = sum(1 for r in results if r["correct"])
@@ -31,18 +43,23 @@ def evaluate_results(results: list[dict]) -> dict:
     accuracy = correct / max(total, 1)
     cost_per_correct = total_tokens / max(correct, 1)
     avg_steps = sum(r.get("num_steps", 1) for r in results) / max(total, 1)
+    total_tool_calls = sum(int(r.get("n_tool_calls", 0)) for r in results)
 
     texts = [r.get("answer_text", "") for r in results]
-    format_ok = sum(1 for t in texts if has_valid_format(t))
-    parse_fail = sum(
-        1 for t in texts
-        if extract_hash_answer(t) is None and extract_predicted_number(t) is None
-    )
-    multi_hash = sum(1 for t in texts if t.count("####") > 1)
+    if dataset_kind == "gsm8k":
+        format_ok = sum(1 for t in texts if has_valid_format(t))
+        parse_fail = sum(
+            1 for t in texts
+            if extract_hash_answer(t) is None and extract_predicted_number(t) is None
+        )
+        multi_hash = sum(1 for t in texts if t.count("####") > 1)
+    else:
+        format_ok = parse_fail = multi_hash = 0
 
     ci_lo, ci_hi = wilson_ci(correct, total)
+    action_counts_total = _merge_action_counts(results)
 
-    return {
+    out = {
         "total": total,
         "correct": correct,
         "accuracy": accuracy,
@@ -51,10 +68,15 @@ def evaluate_results(results: list[dict]) -> dict:
         "avg_tokens_per_problem": avg_tokens,
         "cost_per_correct_answer": cost_per_correct,
         "avg_steps": avg_steps,
-        "format_success_rate": format_ok / max(total, 1),
-        "parse_fail_rate": parse_fail / max(total, 1),
-        "multi_answer_rate": multi_hash / max(total, 1),
+        "total_tool_calls": total_tool_calls,
+        "avg_tool_calls_per_problem": total_tool_calls / max(total, 1),
+        "action_counts_total": action_counts_total,
     }
+    if dataset_kind == "gsm8k":
+        out["format_success_rate"] = format_ok / max(total, 1)
+        out["parse_fail_rate"] = parse_fail / max(total, 1)
+        out["multi_answer_rate"] = multi_hash / max(total, 1)
+    return out
 
 
 def run_cot_baseline(
@@ -71,6 +93,36 @@ def run_cot_baseline(
     total = len(dataset)
     for idx, item in enumerate(dataset, start=1):
         out = cot_generate(model, tokenizer, item["question"], **gen_kwargs)
+        predicted = extract_predicted_number(out["answer_text"])
+        correct = grade_answer(predicted, item["answer_number"])
+        results.append({
+            "question": item["question"],
+            "gold": item["answer_number"],
+            "predicted": predicted,
+            "correct": correct,
+            "answer_text": out["answer_text"],
+            "total_tokens": out["total_tokens"],
+            "num_steps": out["num_steps"],
+        })
+        if idx % max(pulse_every, 1) == 0 or idx == total:
+            print(f"[progress] {stage_name}: {idx}/{total}", flush=True)
+    return results
+
+
+def run_direct_baseline(
+    model,
+    tokenizer,
+    dataset: list[dict],
+    stage_name: str = "Direct",
+    pulse_every: int = 1,
+    **gen_kwargs,
+) -> list[dict]:
+    from src.policy.adaptive import direct_generate
+
+    results = []
+    total = len(dataset)
+    for idx, item in enumerate(dataset, start=1):
+        out = direct_generate(model, tokenizer, item["question"], **gen_kwargs)
         predicted = extract_predicted_number(out["answer_text"])
         correct = grade_answer(predicted, item["answer_number"])
         results.append({
@@ -138,6 +190,8 @@ def run_adaptive_policy(
     dataset: list[dict],
     stage_name: str = "Adaptive",
     pulse_every: int = 1,
+    disable_tools: bool = False,
+    system_prompt: str | None = None,
     **gen_kwargs,
 ) -> list[dict]:
     from src.policy.adaptive import adaptive_generate
@@ -145,7 +199,14 @@ def run_adaptive_policy(
     results = []
     total = len(dataset)
     for idx, item in enumerate(dataset, start=1):
-        out = adaptive_generate(model, tokenizer, item["question"], **gen_kwargs)
+        out = adaptive_generate(
+            model,
+            tokenizer,
+            item["question"],
+            disable_tools=disable_tools,
+            system_prompt=system_prompt,
+            **gen_kwargs,
+        )
         predicted = extract_predicted_number(out["answer_text"])
         correct = grade_answer(predicted, item["answer_number"])
         results.append({
@@ -157,9 +218,79 @@ def run_adaptive_policy(
             "total_tokens": out["total_tokens"],
             "num_steps": out["num_steps"],
             "terminated": out.get("terminated", False),
+            "n_tool_calls": out.get("n_tool_calls", 0),
+            "action_counts": out.get("action_counts", {}),
         })
         if idx % max(pulse_every, 1) == 0 or idx == total:
             print(f"[progress] {stage_name}: {idx}/{total}", flush=True)
+    return results
+
+
+def run_cot_humaneval(
+    model,
+    tokenizer,
+    dataset: list[dict],
+    stage_name: str = "CoT-HE",
+    pulse_every: int = 1,
+    max_tokens: int = 512,
+    temperature: float = 0.7,
+) -> list[dict]:
+    from src.policy.adaptive import cot_generate
+
+    results = []
+    n = len(dataset)
+    for idx, item in enumerate(dataset, start=1):
+        out = cot_generate(model, tokenizer, item["prompt"], max_tokens=max_tokens, temperature=temperature)
+        completion = extract_humaneval_completion(out["answer_text"])
+        ok = passes_humaneval(item["prompt"], completion, item["test"], item["entry_point"])
+        results.append({
+            "task_id": item["task_id"],
+            "correct": ok,
+            "answer_text": completion,
+            "total_tokens": out["total_tokens"],
+            "num_steps": out["num_steps"],
+        })
+        if idx % max(pulse_every, 1) == 0 or idx == n:
+            print(f"[progress] {stage_name}: {idx}/{n}", flush=True)
+    return results
+
+
+def run_adaptive_humaneval(
+    model,
+    tokenizer,
+    dataset: list[dict],
+    stage_name: str = "Adaptive-HE",
+    pulse_every: int = 1,
+    disable_tools: bool = False,
+    **gen_kwargs,
+) -> list[dict]:
+    from src.policy.adaptive import CODING_SYSTEM_PROMPT, adaptive_generate
+
+    results = []
+    n = len(dataset)
+    for idx, item in enumerate(dataset, start=1):
+        out = adaptive_generate(
+            model,
+            tokenizer,
+            item["prompt"],
+            disable_tools=disable_tools,
+            system_prompt=CODING_SYSTEM_PROMPT,
+            **gen_kwargs,
+        )
+        completion = extract_humaneval_completion(out["answer_text"])
+        ok = passes_humaneval(item["prompt"], completion, item["test"], item["entry_point"])
+        results.append({
+            "task_id": item["task_id"],
+            "correct": ok,
+            "answer_text": completion,
+            "total_tokens": out["total_tokens"],
+            "num_steps": out["num_steps"],
+            "terminated": out.get("terminated", False),
+            "n_tool_calls": out.get("n_tool_calls", 0),
+            "action_counts": out.get("action_counts", {}),
+        })
+        if idx % max(pulse_every, 1) == 0 or idx == n:
+            print(f"[progress] {stage_name}: {idx}/{n}", flush=True)
     return results
 
 

@@ -1,6 +1,13 @@
+# Fast GSM8K eval (small model, no QLoRA) for smoke tests.
 model_name: "Qwen/Qwen2.5-0.5B-Instruct"
 dataset: "gsm8k"
 eval_subset_size: 30
+use_qlora: false
+torch_dtype: "float16"
+checkpoint_path: "checkpoints/grpo/final"
+eval_output_dir: "results/eval_quick"
+
 max_steps: 5
 max_tokens_per_step: 256
+disable_tools: false
 self_consistency_k: 3

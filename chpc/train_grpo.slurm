@@ -1,11 +1,13 @@
 #!/bin/bash
+# Override account/partition if needed, e.g.:
+#   sbatch --account=YOUR_ACCOUNT --partition=YOUR_PART chpc/train_grpo.slurm configs/chpc_debug.yaml
 #SBATCH --job-name=grpo-train
 #SBATCH --account=notchpeak-shared-short
 #SBATCH --partition=notchpeak-shared-short
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --cpus-per-task=4
-#SBATCH --time=4:00:00
+#SBATCH --time=8:00:00
 #SBATCH --output=slurm-%j.out
 
 # --- Modules ---

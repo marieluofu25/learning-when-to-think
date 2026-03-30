@@ -1,18 +1,26 @@
-model_name: "Qwen/Qwen2.5-0.5B-Instruct"
+model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
 
 dataset: "gsm8k"
-train_subset_size: 50
-eval_subset_size: 20
+train_subset_size: 32
+eval_subset_size: 16
 
-max_steps: 5
-max_tokens_per_step: 512
+use_qlora: true
+torch_dtype: "bfloat16"
+checkpoint_path: "checkpoints/grpo_debug/final"
+eval_output_dir: "results/eval_debug"
 
-num_rollouts_per_problem: 4
-lambda_cost: 0.02
-kl_coef: 0.001
-learning_rate: 1.0e-6
+max_steps: 4
+max_tokens_per_step: 256
+disable_tools: false
+
+num_rollouts_per_problem: 2
+lambda_cost: 1.0e-5
+mu_tool: 0.05
+kl_coef: 0.0
+learning_rate: 1.0e-5
 num_epochs: 1
-batch_size: 2
+batch_size: 1
+gradient_accumulation_steps: 2
 lora_rank: 16
 lora_alpha: 32
 

@@ -1,4 +1,4 @@
-"""Run a small but real GRPO training session suitable for MacBook Air M4 24GB."""
+"""Small GRPO run for local dev (default: 0.5B float, no bitsandbytes)."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
 from src.data.gsm8k import load_gsm8k
 from src.train.grpo import setup_lora, train_grpo
 
@@ -19,10 +20,13 @@ def main():
     output_dir = Path("checkpoints/grpo/run2")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print("Loading Qwen2.5-0.5B-Instruct...")
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
+    model_id = "Qwen/Qwen2.5-0.5B-Instruct"
+    print(f"Loading {model_id}...")
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(
-        "Qwen/Qwen2.5-0.5B-Instruct", dtype=torch.float32, device_map="auto",
+        model_id,
+        dtype=torch.float32,
+        device_map="auto",
     )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -38,20 +42,27 @@ def main():
     def log_fn(epoch, step, metrics):
         entry = {"epoch": epoch, "step": step, **metrics}
         step_log.append(entry)
-        print(f"  [E{epoch} S{step}] loss={metrics['loss']:.4f} "
-              f"reward={metrics['avg_reward']:.4f} acc={metrics['accuracy']:.3f}")
+        print(
+            f"  [E{epoch} S{step}] loss={metrics['loss']:.4f} "
+            f"reward={metrics['avg_reward']:.4f} acc={metrics['accuracy']:.3f}"
+        )
 
     history = train_grpo(
-        model, tokenizer, train_data,
+        model,
+        tokenizer,
+        train_data,
         num_epochs=2,
         batch_size=1,
         num_rollouts=4,
         max_steps=3,
         max_tokens_per_step=128,
-        lambda_cost=0.1,
+        lambda_cost=1e-5,
+        mu_tool=0.05,
         learning_rate=1e-4,
         save_path=str(output_dir / "final"),
         log_callback=log_fn,
+        gradient_accumulation_steps=1,
+        disable_tools=False,
     )
 
     (output_dir / "history.json").write_text(json.dumps(history, indent=2))

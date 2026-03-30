@@ -52,7 +52,7 @@ def main():
     # --- CoT baseline ---
     print("\n=== Running CoT Baseline ===")
     cot_results = run_cot_baseline(model, tokenizer, dataset)
-    cot_metrics = evaluate_results(cot_results)
+    cot_metrics = evaluate_results(cot_results, dataset_kind="gsm8k")
     print(f"CoT: accuracy={cot_metrics['accuracy']:.3f}, "
           f"avg_tokens={cot_metrics['avg_tokens_per_problem']:.1f}")
     save_results(cot_results, cot_metrics, output_dir / "cot_results.json")
@@ -61,7 +61,7 @@ def main():
     k = cfg.get("self_consistency_k", 5)
     print(f"\n=== Running Self-Consistency (k={k}) ===")
     sc_results = run_self_consistency(model, tokenizer, dataset, k=k)
-    sc_metrics = evaluate_results(sc_results)
+    sc_metrics = evaluate_results(sc_results, dataset_kind="gsm8k")
     print(f"Self-Consistency: accuracy={sc_metrics['accuracy']:.3f}, "
           f"avg_tokens={sc_metrics['avg_tokens_per_problem']:.1f}")
     save_results(sc_results, sc_metrics, output_dir / "self_consistency_results.json")

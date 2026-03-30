@@ -1,4 +1,5 @@
-model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
+# Optional second track: general instruct (often better on HumanEval transfer).
+model_name: "Qwen/Qwen2.5-7B-Instruct"
 
 dataset: "gsm8k"
 train_subset_size: 2000
@@ -6,8 +7,8 @@ eval_subset_size: 200
 
 use_qlora: true
 torch_dtype: "bfloat16"
-checkpoint_path: "checkpoints/grpo_chpc/final"
-eval_output_dir: "results/eval_chpc"
+checkpoint_path: "checkpoints/grpo_qwen25_7b/final"
+eval_output_dir: "results/eval_qwen25_7b"
 
 max_steps: 5
 max_tokens_per_step: 512

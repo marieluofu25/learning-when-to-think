@@ -1,20 +1,29 @@
-model_name: "Qwen/Qwen2.5-0.5B-Instruct"
+model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
 
-# Dataset
+# Dataset: gsm8k | humaneval
 dataset: "gsm8k"
 train_subset_size: 200
 eval_subset_size: 100
 
+# Training / eval
+use_qlora: false
+torch_dtype: "float16"
+checkpoint_path: "checkpoints/grpo/final"
+sft_checkpoint: "checkpoints/sft/final"
+eval_output_dir: "results/eval"
+
 # Adaptive policy
 max_steps: 5
-actions:
-  - "continue"
-  - "terminate"
+max_tokens_per_step: 256
+disable_tools: false
+direct_max_tokens: 64
+humaneval_max_tokens: 512
 
 # GRPO training
 num_rollouts_per_problem: 4
-lambda_cost: 0.1
-max_tokens_per_step: 256
+lambda_cost: 1.0e-5
+mu_tool: 0.05
+kl_coef: 0.0
 learning_rate: 1.0e-4
 num_epochs: 3
 batch_size: 2
@@ -23,5 +32,4 @@ lora_rank: 16
 lora_alpha: 32
 
 # Evaluation
-eval_batch_size: 4
 self_consistency_k: 5
