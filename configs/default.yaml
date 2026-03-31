@@ -1,7 +1,7 @@
 model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
 
-# Dataset: gsm8k | humaneval
-dataset: "gsm8k"
+# Dataset: MATH-500 only (HuggingFaceH4/MATH-500)
+dataset: "math_500"
 train_subset_size: 200
 eval_subset_size: 100
 
@@ -12,17 +12,25 @@ checkpoint_path: "checkpoints/grpo/final"
 sft_checkpoint: "checkpoints/sft/final"
 eval_output_dir: "results/eval"
 
-# Adaptive policy
+# Adaptive policy (continue / refine / terminate)
 max_steps: 5
 max_tokens_per_step: 256
-disable_tools: false
+allow_refine: true
 direct_max_tokens: 64
 humaneval_max_tokens: 512
 
-# GRPO training
+# GRPO + ALP + DeGRPO
 num_rollouts_per_problem: 4
-lambda_cost: 1.0e-5
-mu_tool: 0.05
+# ALP: reward = r_acc - beta * max(0, SR) * (n_tokens / L_max); L_max defaults to max_steps * max_tokens_per_step if omitted
+beta: 0.02
+L_max: null
+# DeGRPO: weighted log-probs on action-prefix vs rest; set false for vanilla GRPO on all tokens
+degrpo: true
+n_control_tokens: 16
+w_ctrl: 2.0
+w_resp: 1.0
+# Optional logging-only format score (not added to ALP reward when 0)
+format_bonus: 0.0
 kl_coef: 0.0
 learning_rate: 1.0e-4
 num_epochs: 3

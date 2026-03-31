@@ -41,7 +41,7 @@ def traces_to_chat_dataset(traces: list[dict]) -> Dataset:
         text = (
             f"<|im_start|>system\n"
             f"You are a math problem solver. Solve problems step by step, "
-            f"then give the final numerical answer on the last line.<|im_end|>\n"
+            f"then give the final answer on the last line in `#### <final answer>` format.<|im_end|>\n"
             f"<|im_start|>user\n{t['question']}<|im_end|>\n"
             f"<|im_start|>assistant\n{assistant_text}<|im_end|>"
         )

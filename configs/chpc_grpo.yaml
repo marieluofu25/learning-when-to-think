@@ -1,6 +1,6 @@
 model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
 
-dataset: "gsm8k"
+dataset: "math_500"
 train_subset_size: 2000
 eval_subset_size: 200
 
@@ -11,11 +11,15 @@ eval_output_dir: "results/eval_chpc"
 
 max_steps: 5
 max_tokens_per_step: 512
-disable_tools: false
+allow_refine: true
 
 num_rollouts_per_problem: 8
-lambda_cost: 1.0e-5
-mu_tool: 0.05
+beta: 0.02
+L_max: null
+degrpo: true
+w_ctrl: 2.0
+w_resp: 1.0
+format_bonus: 0.0
 kl_coef: 0.0
 learning_rate: 1.0e-6
 num_epochs: 5

@@ -1,4 +1,4 @@
-"""Run CoT and self-consistency baselines on GSM8K."""
+"""Run CoT and self-consistency baselines on MATH-500."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.data.gsm8k import load_gsm8k
+from src.data.math_500 import load_math_500
 from src.eval.evaluate import (
     evaluate_results,
     run_cot_baseline,
@@ -46,13 +46,13 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    print(f"Loading GSM8K (test, subset={cfg['eval_subset_size']})")
-    dataset = load_gsm8k("test", subset_size=cfg["eval_subset_size"])
+    print(f"Loading MATH-500 (test, subset={cfg['eval_subset_size']})")
+    dataset = load_math_500("test", subset_size=cfg["eval_subset_size"])
 
     # --- CoT baseline ---
     print("\n=== Running CoT Baseline ===")
     cot_results = run_cot_baseline(model, tokenizer, dataset)
-    cot_metrics = evaluate_results(cot_results, dataset_kind="gsm8k")
+    cot_metrics = evaluate_results(cot_results, dataset_kind="math_500")
     print(f"CoT: accuracy={cot_metrics['accuracy']:.3f}, "
           f"avg_tokens={cot_metrics['avg_tokens_per_problem']:.1f}")
     save_results(cot_results, cot_metrics, output_dir / "cot_results.json")
@@ -61,7 +61,7 @@ def main():
     k = cfg.get("self_consistency_k", 5)
     print(f"\n=== Running Self-Consistency (k={k}) ===")
     sc_results = run_self_consistency(model, tokenizer, dataset, k=k)
-    sc_metrics = evaluate_results(sc_results, dataset_kind="gsm8k")
+    sc_metrics = evaluate_results(sc_results, dataset_kind="math_500")
     print(f"Self-Consistency: accuracy={sc_metrics['accuracy']:.3f}, "
           f"avg_tokens={sc_metrics['avg_tokens_per_problem']:.1f}")
     save_results(sc_results, sc_metrics, output_dir / "self_consistency_results.json")

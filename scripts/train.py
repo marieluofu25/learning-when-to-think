@@ -11,7 +11,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.data.gsm8k import load_gsm8k
+from src.data.math_500 import load_math_500
 from peft import prepare_model_for_kbit_training
 
 from src.train.grpo import setup_lora, train_grpo
@@ -68,8 +68,14 @@ def main():
         alpha=cfg.get("lora_alpha", 32),
     )
 
-    print(f"Loading GSM8K (train, subset={cfg['train_subset_size']})")
-    train_data = load_gsm8k("train", subset_size=cfg["train_subset_size"])
+    dataset_name = str(cfg.get("dataset", "math_500")).lower()
+    if dataset_name not in {"math_500", "math-500", "math500"}:
+        raise ValueError(
+            f"MATH-500-only training expected dataset=math_500, got dataset={dataset_name!r}"
+        )
+
+    print(f"Loading MATH-500 (train slice, subset={cfg['train_subset_size']})")
+    train_data = load_math_500("test", subset_size=cfg["train_subset_size"])
 
     step_log: list[dict] = []
 
@@ -84,6 +90,8 @@ def main():
     print("\n=== Starting GRPO Training ===")
     if kl_coef > 0:
         print(f"  KL regularization enabled (coef={kl_coef})")
+    allow_refine = bool(cfg.get("allow_refine", cfg.get("allow_verify", True)))
+    l_max = cfg.get("L_max")
     history = train_grpo(
         model,
         tokenizer,
@@ -93,15 +101,20 @@ def main():
         num_rollouts=cfg.get("num_rollouts_per_problem", 4),
         max_steps=cfg.get("max_steps", 5),
         max_tokens_per_step=cfg.get("max_tokens_per_step", 256),
-        lambda_cost=float(cfg.get("lambda_cost", 1e-5)),
-        mu_tool=float(cfg.get("mu_tool", 0.05)),
+        beta=float(cfg.get("beta", 0.02)),
         learning_rate=float(cfg.get("learning_rate", 1e-4)),
         save_path=str(output_dir / "final"),
         log_callback=log_callback,
         ref_model=ref_model,
         kl_coef=kl_coef,
         gradient_accumulation_steps=int(cfg.get("gradient_accumulation_steps", 1)),
-        disable_tools=bool(cfg.get("disable_tools", False)),
+        allow_refine=allow_refine,
+        L_max=float(l_max) if l_max is not None else None,
+        format_bonus=float(cfg.get("format_bonus", 0.0)),
+        n_control_tokens=int(cfg.get("n_control_tokens", 16)),
+        w_ctrl=float(cfg.get("w_ctrl", 2.0)),
+        w_resp=float(cfg.get("w_resp", 1.0)),
+        degrpo=bool(cfg.get("degrpo", True)),
     )
 
     (output_dir / "training_history.json").write_text(json.dumps(history, indent=2))

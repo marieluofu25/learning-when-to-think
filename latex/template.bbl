@@ -1,0 +1,53 @@
+\begin{thebibliography}{9}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Cobbe et~al.(2021)Cobbe, Kosaraju, Bavarian, et~al.]{cobbe2021gsm8k}
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, et~al.
+\newblock Training verifiers to solve math word problems.
+\newblock \emph{arXiv preprint arXiv:2110.14168}, 2021.
+
+\bibitem[Kumar et~al.(2024)Kumar, Zhuang, Agarwal, Su, Co-Reyes, et~al.]{kumar2024score}
+Aviral Kumar, Vincent Zhuang, Rishabh Agarwal, Yi~Su, John~D Co-Reyes, et~al.
+\newblock Training language models to self-correct via reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:2409.12917}, 2024.
+
+\bibitem[Lightman et~al.(2023)Lightman, Kosaraju, Burda, Edwards, Baker, Lee, Leike, Schulman, Sutskever, and Cobbe]{lightman2023lets}
+Hunter Lightman, Vineet Kosaraju, Yura Burda, Harri Edwards, Bowen Baker, Teddy Lee, Jan Leike, John Schulman, Ilya Sutskever, and Karl Cobbe.
+\newblock Let's verify step by step.
+\newblock \emph{arXiv preprint arXiv:2305.20050}, 2023.
+
+\bibitem[Shao et~al.(2024)Shao, Wang, Zhu, Yang, Li, et~al.]{shao2024deepseekmath}
+Zhihong Shao, Peiyi Wang, Qi~Zhu, Runxin Yang, Yichi Li, et~al.
+\newblock Deepseekmath: Pushing the limits of mathematical reasoning in open language models.
+\newblock \emph{arXiv preprint arXiv:2402.03300}, 2024.
+
+\bibitem[Snell et~al.(2024)Snell, Lee, Xu, and Kumar]{snell2024scaling}
+Charlie Snell, Jaeho Lee, Kelvin Xu, and Aviral Kumar.
+\newblock Scaling llm test-time compute optimally can be more effective than scaling model parameters.
+\newblock \emph{arXiv preprint arXiv:2408.03314}, 2024.
+
+\bibitem[Uesato et~al.(2022)Uesato, Kushman, Kumar, Song, Siegel, Wang, Creswell, Irving, Higgins, Sadigh, et~al.]{uesato2022process}
+Jonathan Uesato, Nate Kushman, Ramana Kumar, Francis Song, Noah Siegel, Lisa Wang, Antonia Creswell, Geoffrey Irving, Irina Higgins, Dorsa Sadigh, et~al.
+\newblock Solving math word problems with process- and outcome-based feedback.
+\newblock \emph{arXiv preprint arXiv:2211.14275}, 2022.
+
+\bibitem[Wang et~al.(2023)Wang, Wei, Schuurmans, Le, Chi, Narang, Chowdhery, and Zhou]{wang2023selfconsistency}
+Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed~Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou.
+\newblock Self-consistency improves chain of thought reasoning in language models.
+\newblock In \emph{International Conference on Learning Representations}, 2023.
+
+\bibitem[Wei et~al.(2022)Wei, Wang, Schuurmans, Bosma, Xia, Chi, Le, and Zhou]{wei2022chainofthought}
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed~Chi, Quoc Le, and Denny Zhou.
+\newblock Chain-of-thought prompting elicits reasoning in large language models.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2022.
+
+\bibitem[Zhang et~al.(2025)Zhang, Zheng, Wu, Zhang, Lin, Yu, Liu, Zhou, and Lin]{zhang2025lessons}
+Zhenru Zhang, Chujie Zheng, Yangzhen Wu, Beichen Zhang, Runji Lin, Bowen Yu, Dayiheng Liu, Jingren Zhou, and Junyang Lin.
+\newblock The lessons of developing process reward models in mathematical reasoning.
+\newblock \emph{arXiv preprint arXiv:2501.07301}, 2025.
+
+\end{thebibliography}

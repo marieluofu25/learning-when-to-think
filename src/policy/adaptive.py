@@ -1,79 +1,111 @@
-"""Adaptive reasoning: five meta-actions (continue, verify, sample_alt, call_tool, terminate)."""
+"""Adaptive reasoning policy: three meta-actions (continue, refine, terminate)."""
 
 from __future__ import annotations
 
 import torch
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
-from src.policy.tool_exec import extract_python_from_response, run_python_sandboxed
-
 CONTINUE_TOKEN = "<continue>"
-VERIFY_TOKEN = "<verify>"
-SAMPLE_ALT_TOKEN = "<sample_alt>"
-CALL_TOOL_TOKEN = "<call_tool>"
+REFINE_TOKEN = "<refine>"
 TERMINATE_TOKEN = "<terminate>"
+
+# Back-compat aliases (deprecated)
+VERIFY_TOKEN = REFINE_TOKEN
 
 SYSTEM_PROMPT = (
     "You are a math problem solver. Work step by step.\n"
     "Each assistant message must start by choosing exactly one action on its own line:\n"
     f"- {CONTINUE_TOKEN} — add more chain-of-thought\n"
-    f"- {VERIFY_TOKEN} — double-check the last step\n"
-    f"- {SAMPLE_ALT_TOKEN} — discard this approach and try a different one\n"
-    f"- {CALL_TOOL_TOKEN} — run Python (put code in a ```python fenced block) for arithmetic\n"
-    f"- {TERMINATE_TOKEN} — final answer: end with #### <number> on its own line\n"
-    "After the action line, write your reasoning (and code block if using call_tool)."
+    f"- {REFINE_TOKEN} — double-check and correct the last step\n"
+    f"- {TERMINATE_TOKEN} — final answer: put the result in \\boxed{{...}} "
+    "and/or end with #### <final answer> on its own line\n"
+    "After the action line, write your reasoning."
+)
+
+SYSTEM_PROMPT_NO_REFINE = (
+    "You are a math problem solver. Work step by step.\n"
+    "Each assistant message must start by choosing exactly one action on its own line:\n"
+    f"- {CONTINUE_TOKEN} — add more chain-of-thought\n"
+    f"- {TERMINATE_TOKEN} — final answer: put the result in \\boxed{{...}} "
+    "and/or end with #### <final answer> on its own line\n"
+    "After the action line, write your reasoning."
 )
 
 DECISION_PROMPT = (
     "\nChoose the next action. Reply starting with one of: "
-    f"{CONTINUE_TOKEN}, {VERIFY_TOKEN}, {SAMPLE_ALT_TOKEN}, {CALL_TOOL_TOKEN}, or {TERMINATE_TOKEN}."
+    f"{CONTINUE_TOKEN}, {REFINE_TOKEN}, or {TERMINATE_TOKEN}."
 )
 
-VERIFY_USER_PROMPT = (
+DECISION_PROMPT_NO_REFINE = (
+    "\nChoose the next action. Reply starting with one of: "
+    f"{CONTINUE_TOKEN} or {TERMINATE_TOKEN}."
+)
+
+REFINE_USER_PROMPT = (
     "Double-check your previous reasoning step. Fix any mistake, then continue "
-    f"(still starting your reply with an action token: {CONTINUE_TOKEN}, {VERIFY_TOKEN}, etc.)."
-)
-
-TOOL_FAILURE_PROMPT = "Tool execution failed or was empty. Fix the code or continue without tools."
-
-DISABLED_TOOL_USER_PROMPT = (
-    "Tool use is disabled for this run. Continue reasoning without CALL_TOOL "
-    f"(start with {CONTINUE_TOKEN} or another allowed action)."
-)
-
-CODING_SYSTEM_PROMPT = (
-    "You are an expert Python programmer completing HumanEval-style tasks.\n"
-    "Each assistant message must start by choosing exactly one action on its own line:\n"
-    f"- {CONTINUE_TOKEN} — more reasoning or partial code\n"
-    f"- {VERIFY_TOKEN} — re-read the spec and your last step\n"
-    f"- {SAMPLE_ALT_TOKEN} — discard and try a different approach\n"
-    f"- {CALL_TOOL_TOKEN} — run Python in a ```python fenced block (e.g. quick tests)\n"
-    f"- {TERMINATE_TOKEN} — final answer: output the **complete function body** that fits "
-    "the given signature/docstring (only the indented body lines, or a full ```python block).\n"
-    "The grader concatenates your completion after the task prompt."
+    f"(still starting your reply with an action token: {CONTINUE_TOKEN}, {REFINE_TOKEN}, {TERMINATE_TOKEN})."
 )
 
 
 def build_initial_messages(question: str, *, system_prompt: str | None = None) -> list[dict]:
-    sys_p = system_prompt or SYSTEM_PROMPT
+    sys_p = SYSTEM_PROMPT if system_prompt is None else system_prompt
     return [
         {"role": "system", "content": sys_p},
         {"role": "user", "content": question},
     ]
 
 
-def detect_action(response: str, *, disable_tools: bool) -> str:
+def detect_action(response: str) -> str:
     if TERMINATE_TOKEN in response:
         return "terminate"
-    if (not disable_tools) and CALL_TOOL_TOKEN in response:
-        return "call_tool"
-    if SAMPLE_ALT_TOKEN in response:
-        return "sample_alt"
-    if VERIFY_TOKEN in response:
-        return "verify"
+    # Legacy checkpoints / prompts used `<verify>` for the same meta-action.
+    if REFINE_TOKEN in response or "<verify>" in response:
+        return "refine"
     if CONTINUE_TOKEN in response:
         return "continue"
     return "continue"
+
+
+def _control_token_len(
+    tokenizer: PreTrainedTokenizerBase,
+    step_ids: list[int],
+    action_token: str,
+) -> int:
+    """
+    Return number of *prefix* tokens whose decoded text (after leading whitespace
+    stripping) exactly equals the given action token.
+    """
+    action_ids = tokenizer.encode(action_token, add_special_tokens=False)
+    if len(step_ids) >= len(action_ids) and step_ids[: len(action_ids)] == action_ids:
+        return len(action_ids)
+
+    max_scan = min(len(step_ids), len(action_ids) + 4)
+    for k in range(1, max_scan + 1):
+        decoded = tokenizer.decode(step_ids[:k], skip_special_tokens=True)
+        if decoded.lstrip() == action_token:
+            return k
+
+    return len(action_ids)
+
+
+def _action_control_token_len(
+    tokenizer: PreTrainedTokenizerBase,
+    step_ids: list[int],
+    action: str,
+) -> int:
+    """Control-prefix length for the chosen meta-action (handles legacy `<verify>`)."""
+    if action != "refine":
+        tok = {
+            "continue": CONTINUE_TOKEN,
+            "terminate": TERMINATE_TOKEN,
+        }[action]
+        return _control_token_len(tokenizer, step_ids, tok)
+    for cand in (REFINE_TOKEN, "<verify>"):
+        n = _control_token_len(tokenizer, step_ids, cand)
+        dec = tokenizer.decode(step_ids[:n], skip_special_tokens=True).lstrip()
+        if dec == cand:
+            return n
+    return _control_token_len(tokenizer, step_ids, REFINE_TOKEN)
 
 
 @torch.inference_mode()
@@ -84,30 +116,39 @@ def adaptive_rollout(
     max_steps: int = 5,
     max_tokens_per_step: int = 256,
     temperature: float = 1.0,
-    disable_tools: bool = False,
-    tool_timeout_sec: float = 5.0,
+    allow_refine: bool = True,
+    allow_verify: bool | None = None,
     system_prompt: str | None = None,
 ) -> dict:
     """Single rollout: shared by GRPO training and evaluation.
 
+    If ``allow_verify`` is set, it overrides ``allow_refine`` (deprecated alias).
+
     Returns:
         text: joined assistant outputs (for reward / #### parsing)
-        total_tokens, n_tool_calls, action_counts (dict str->int)
+        total_tokens, action_counts (dict str->int)
         messages_history, generated_ids, prompt_lengths (for GRPO log-prob replay)
+        control_token_lens: per-step lengths of the first tokens for action token
         terminated: bool
     """
+    if allow_verify is not None:
+        allow_refine = allow_verify
+
     model.eval()
-    messages = build_initial_messages(question, system_prompt=system_prompt)
+    resolved_system_prompt = (
+        system_prompt
+        if system_prompt is not None
+        else (SYSTEM_PROMPT if allow_refine else SYSTEM_PROMPT_NO_REFINE)
+    )
+    messages = build_initial_messages(question, system_prompt=resolved_system_prompt)
     all_generated_ids: list[list[int]] = []
     all_prompt_lengths: list[int] = []
+    control_token_lens: list[int] = []
     final_text_parts: list[str] = []
     total_tokens = 0
-    n_tool_calls = 0
     action_counts: dict[str, int] = {
         "continue": 0,
-        "verify": 0,
-        "sample_alt": 0,
-        "call_tool": 0,
+        "refine": 0,
         "terminate": 0,
     }
     terminated = False
@@ -138,8 +179,13 @@ def adaptive_rollout(
         response = tokenizer.decode(new_ids, skip_special_tokens=True).strip()
         final_text_parts.append(response)
 
-        action = detect_action(response, disable_tools=disable_tools)
-        if disable_tools and action == "call_tool":
+        detected_action = detect_action(response)
+        control_token_lens.append(
+            _action_control_token_len(tokenizer, new_ids, detected_action)
+        )
+
+        action = detected_action
+        if not allow_refine and action == "refine":
             action = "continue"
 
         action_counts[action] = action_counts.get(action, 0) + 1
@@ -149,43 +195,24 @@ def adaptive_rollout(
             terminated = True
             break
 
-        if action == "call_tool":
+        if action == "refine":
             messages.append({"role": "assistant", "content": response})
-            if disable_tools:
-                messages.append({"role": "user", "content": DISABLED_TOOL_USER_PROMPT})
-                continue
-            code = extract_python_from_response(response)
-            if code:
-                n_tool_calls += 1
-                ok, out = run_python_sandboxed(code, timeout_sec=tool_timeout_sec)
-                tool_msg = f"Python tool output:\n{out}" if ok else f"Python tool error:\n{out}"
-            else:
-                tool_msg = TOOL_FAILURE_PROMPT
-            messages.append({"role": "user", "content": tool_msg})
+            messages.append({"role": "user", "content": REFINE_USER_PROMPT})
             continue
 
-        if action == "sample_alt":
-            messages = build_initial_messages(question, system_prompt=system_prompt)
-            continue
-
-        if action == "verify":
-            messages.append({"role": "assistant", "content": response})
-            messages.append({"role": "user", "content": VERIFY_USER_PROMPT})
-            continue
-
-        # continue (default)
         messages.append({"role": "assistant", "content": response})
-        messages.append({"role": "user", "content": DECISION_PROMPT})
+        next_decision_prompt = DECISION_PROMPT if allow_refine else DECISION_PROMPT_NO_REFINE
+        messages.append({"role": "user", "content": next_decision_prompt})
 
     full_text = " ".join(final_text_parts)
     return {
         "text": full_text,
         "total_tokens": total_tokens,
-        "n_tool_calls": n_tool_calls,
         "action_counts": action_counts,
         "messages_history": messages,
         "generated_ids": all_generated_ids,
         "prompt_lengths": all_prompt_lengths,
+        "control_token_lens": control_token_lens,
         "terminated": terminated,
     }
 
@@ -199,10 +226,13 @@ def adaptive_generate(
     max_tokens_per_step: int = 256,
     temperature: float = 0.7,
     return_full_trace: bool = False,
-    disable_tools: bool = False,
+    allow_refine: bool = True,
+    allow_verify: bool | None = None,
     system_prompt: str | None = None,
 ) -> dict:
     """Eval-friendly wrapper around adaptive_rollout (slightly lower temperature default)."""
+    if allow_verify is not None:
+        allow_refine = allow_verify
     out = adaptive_rollout(
         model,
         tokenizer,
@@ -210,7 +240,7 @@ def adaptive_generate(
         max_steps=max_steps,
         max_tokens_per_step=max_tokens_per_step,
         temperature=temperature,
-        disable_tools=disable_tools,
+        allow_refine=allow_refine,
         system_prompt=system_prompt,
     )
     answer_text = out["text"]
@@ -223,7 +253,6 @@ def adaptive_generate(
         "total_tokens": out["total_tokens"],
         "num_steps": len(out["generated_ids"]),
         "terminated": out["terminated"],
-        "n_tool_calls": out["n_tool_calls"],
         "action_counts": dict(out["action_counts"]),
     }
     if return_full_trace:
@@ -245,8 +274,7 @@ def cot_generate(
             "role": "system",
             "content": (
                 "You are a math problem solver. Solve step by step. "
-                "End your solution with #### <number> on its own line, "
-                "where <number> is your final numerical answer."
+                "Put the final answer in \\boxed{...} and/or end with #### <final answer> on its own line."
             ),
         },
         {"role": "user", "content": question},
@@ -287,8 +315,8 @@ def direct_generate(
         {
             "role": "system",
             "content": (
-                "You solve grade-school math. Reply with only the final number. "
-                "End with #### <number> on its own line."
+                "You solve grade-school math. Reply with only the final answer. "
+                "Use \\boxed{...} and/or end with #### <final answer> on its own line."
             ),
         },
         {"role": "user", "content": question},

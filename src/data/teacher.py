@@ -10,14 +10,19 @@ from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
 
-from src.data.gsm8k import load_gsm8k, extract_predicted_number, grade_answer
+from src.data.gsm8k import load_gsm8k
+from src.data.math_500 import (
+    extract_hash_answer,
+    extract_predicted_answer,
+    grade_answer as grade_answer_math,
+    load_math_500,
+)
 
 load_dotenv()
 
 TEACHER_PROMPT = (
     "You are an expert math tutor. Solve the following math problem step by step.\n"
-    "Show your reasoning clearly, then on the LAST line write ONLY the final "
-    "numerical answer (just the number, nothing else).\n\n"
+    "Show your reasoning clearly, then on the LAST line write ONLY `#### <final answer>`.\n\n"
     "Problem: {question}"
 )
 
@@ -70,7 +75,7 @@ def generate_teacher_dataset(
     model: str | None = None,
     delay: float = 13.0,
 ) -> Path:
-    """Generate teacher traces for GSM8K problems and save as JSONL.
+    """Generate teacher traces for MATH-500 problems and save as JSONL.
 
     Respects free-tier rate limits (5 RPM) and supports resume by appending
     to existing output files.
@@ -90,7 +95,7 @@ def generate_teacher_dataset(
         print(f"Resuming: {len(existing)} traces already exist", flush=True)
 
     client = get_client()
-    dataset = load_gsm8k("train", subset_size=num_problems)
+    dataset = load_math_500("test", subset_size=num_problems)
 
     correct_count = 0
     total_done = len(existing)
@@ -103,10 +108,10 @@ def generate_teacher_dataset(
 
             try:
                 trace = generate_teacher_trace(client, item["question"], model=model)
-                predicted = extract_predicted_number(trace["answer_line"])
+                predicted = extract_hash_answer(trace["answer_line"])
                 if predicted is None:
-                    predicted = extract_predicted_number(trace["full_response"])
-                correct = grade_answer(predicted, item["answer_number"])
+                    predicted = extract_predicted_answer(trace["full_response"])
+                correct = grade_answer_math(predicted, item["answer_number"])
                 if correct:
                     correct_count += 1
 
@@ -183,6 +188,40 @@ def generate_teacher_dataset_from_gsm8k(
     return out
 
 
+def generate_teacher_dataset_from_math_500(
+    output_path: str = "data/teacher_traces.jsonl",
+    num_problems: int = 100,
+) -> Path:
+    """Use MATH-500 dataset's `solution`/`answer` fields as teacher traces."""
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    dataset = load_math_500("test", subset_size=num_problems)
+    correct_count = 0
+
+    with open(out, "w") as f:
+        for item in dataset:
+            reasoning = (item.get("solution") or "").strip()
+            full_answer = item.get("full_answer") or item.get("answer_number") or ""
+            answer_line = f"#### {full_answer}".strip()
+
+            entry = {
+                "question": item["question"],
+                "gold_answer": item["answer_number"],
+                "teacher_reasoning": reasoning,
+                "teacher_answer_line": answer_line,
+                "teacher_predicted": item["answer_number"],
+                "teacher_correct": True,
+                "full_response": f"{reasoning}\n{answer_line}".strip(),
+                "source": "math_500_gold",
+            }
+            f.write(json.dumps(entry, default=str) + "\n")
+            correct_count += 1
+
+    print(f"Done. {correct_count}/{num_problems} traces from MATH-500 gold. Saved to {out}", flush=True)
+    return out
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -190,7 +229,7 @@ if __name__ == "__main__":
     parser.add_argument("--num-problems", type=int, default=100)
     parser.add_argument("--output", default="data/teacher_traces.jsonl")
     parser.add_argument("--delay", type=float, default=15.0)
-    parser.add_argument("--source", choices=["api", "gsm8k"], default="gsm8k",
+    parser.add_argument("--source", choices=["api", "gsm8k", "math_500"], default="math_500",
                         help="Use 'api' for Gemini, 'gsm8k' for built-in solutions")
     args = parser.parse_args()
 
@@ -200,8 +239,13 @@ if __name__ == "__main__":
             num_problems=args.num_problems,
             delay=args.delay,
         )
-    else:
+    elif args.source == "gsm8k":
         generate_teacher_dataset_from_gsm8k(
+            output_path=args.output,
+            num_problems=args.num_problems,
+        )
+    else:
+        generate_teacher_dataset_from_math_500(
             output_path=args.output,
             num_problems=args.num_problems,
         )

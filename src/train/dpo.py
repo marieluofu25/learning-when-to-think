@@ -11,7 +11,7 @@ from peft import LoraConfig, PeftModel, TaskType
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import DPOConfig, DPOTrainer
 
-from src.data.gsm8k import load_gsm8k, extract_predicted_number, grade_answer
+from src.data.math_500 import load_math_500, extract_predicted_answer, grade_answer
 from src.policy.adaptive import cot_generate
 
 
@@ -39,7 +39,7 @@ def generate_preference_pairs(
                 model, tokenizer, item["question"],
                 max_tokens=512, temperature=temperature,
             )
-            predicted = extract_predicted_number(out["answer_text"])
+            predicted = extract_predicted_answer(out["answer_text"])
             is_correct = grade_answer(predicted, item["answer_number"])
 
             if is_correct:
@@ -54,7 +54,7 @@ def generate_preference_pairs(
             prompt = (
                 f"<|im_start|>system\n"
                 f"You are a math problem solver. Solve problems step by step, "
-                f"then give the final numerical answer on the last line.<|im_end|>\n"
+                f"then give the final answer in `#### <final answer>` format on the last line.<|im_end|>\n"
                 f"<|im_start|>user\n{item['question']}<|im_end|>\n"
                 f"<|im_start|>assistant\n"
             )
@@ -106,18 +106,28 @@ def run_dpo(
     pairs_path = Path("data/dpo_pairs.jsonl")
     pairs_path.parent.mkdir(parents=True, exist_ok=True)
 
+    regenerate = True
+    pairs: list[dict] = []
     if pairs_path.exists() and pairs_path.stat().st_size > 0:
         print(f"Loading existing pairs from {pairs_path}", flush=True)
-        pairs = []
         with open(pairs_path) as f:
             for line in f:
                 pairs.append(json.loads(line))
         print(f"  Loaded {len(pairs)} pairs", flush=True)
-    else:
+
+        prompt0 = pairs[0].get("prompt") if pairs else ""
+        # If the prompt still uses the old GSM8K-style wording, regenerate.
+        regenerate = "#### <final answer>" not in (prompt0 or "")
+        if regenerate:
+            print("  Existing pairs look GSM8K-style; regenerating for MATH-500...", flush=True)
+
+    if regenerate:
         print("Generating preference pairs from SFT model...", flush=True)
-        train_data = load_gsm8k("train", subset_size=num_problems)
+        train_data = load_math_500("test", subset_size=num_problems)
         pairs = generate_preference_pairs(
-            sft_model, tokenizer, train_data,
+            sft_model,
+            tokenizer,
+            train_data,
             samples_per_problem=samples_per_problem,
         )
         print(f"\nTotal valid pairs: {len(pairs)}", flush=True)

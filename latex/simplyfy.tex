@@ -1,0 +1,110 @@
+\documentclass{article}
+
+\usepackage[numbers]{natbib}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+
+\title{Learning When to Think: RL for Adaptive Reasoning Computation in LLMs}
+
+\author{%
+  Ivan Andhika \\
+  School of Computing\\
+  University of Utah\\
+  \texttt{u1590903@utah.edu}
+  \and
+  Hao Ren \\
+  School of Computing\\
+  University of Utah\\
+  \texttt{u1527543@utah.edu}
+  \and
+  Ammon Gleason \\
+  School of Computing\\
+  University of Utah\\
+  \texttt{u1221580@utah.edu}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Large language models (LLMs) benefit from extended test-time computation, yet static reasoning budgets lead to computational waste on trivial queries and failure on complex ones.
+While step-level verification improves reasoning quality, current reinforcement learning (RL) methods often suffer from ``mode collapse'' or ``overthinking'' due to uniform length penalties.
+We propose a multi-turn adaptive policy with three specialized actions: \texttt{continue}, \texttt{refine}, and \texttt{terminate}.
+Unlike passive verification, the \texttt{refine} action enables the model to utilize internal signals to correct intermediate errors.
+We train a LoRA-adapted Qwen2.5-Math-7B-Instruct using Decoupled Group Relative Policy Optimization (DeGRPO) to balance mode-selection gradients against response accuracy.
+To manage the overthinking dilemma, we implement an Adaptive Length Penalty (ALP) that scales inversely with problem difficulty.
+We evaluate our approach on MATH-500 and AIME 2024 to provide sufficient headroom for policy discovery, comparing against fixed-compute and vanilla GRPO baselines.
+\end{abstract}
+
+\section{Introduction}
+
+Increasing test-time computation through Chain-of-Thought (CoT) and self-consistency decoding has established a clear scaling law for reasoning.
+However, recent evidence suggests that the efficiency of this scaling depends on instance-specific allocation: easy problems require minimal tokens, while difficult problems necessitate extended reflection or backtracking.
+A core challenge in training adaptive models is ``mode collapse,'' where the model ignores control tokens in favor of standard reasoning, often triggered by gradient imbalances in standard RL algorithms.
+Furthermore, static length penalties frequently lead to ``training collapse,'' where the model prematurely stops reasoning to avoid penalties.
+We address these gaps by introducing: (1) a verify-and-refine MDP framework that treats error recovery as a high-reward skill; (2) an Adaptive Length Penalty (ALP) that redistributes the token budget based on the online solve rate; and (3) a DeGRPO training pipeline that decouples the mode-selection loss from the response content loss.
+
+Related work on test-time scaling~\citep{wei2022chainofthought,wang2023selfconsistency,snell2024scaling}, process supervision~\citep{lightman2023lets,zhang2025lessons}, RL-style self-correction~\citep{kumar2024score}, and group-relative policy optimization in math models~\citep{shao2024deepseekmath} motivates our design choices.
+
+\section{Method}
+
+\subsection{MDP Formulation}
+
+We model the reasoning process as a Markov Decision Process.
+Given a query $q$, the state $s_t$ consists of the problem text and the trajectory generated so far.
+The action space is defined as $\mathcal{A} = \{\texttt{continue}, \texttt{refine}, \texttt{terminate}\}$.
+
+\begin{itemize}
+  \item \textbf{Continue:} Extends the current reasoning chain.
+  \item \textbf{Refine:} Triggers a self-correction block, specifically rewarded for ``progress'' (moving from an incorrect state to a correct one).
+  \item \textbf{Terminate:} Concludes the sequence and outputs the final answer.
+\end{itemize}
+
+\subsection{Adaptive Length Penalty (ALP)}
+
+To prevent overthinking on easy tasks without hindering complex reasoning, we employ an Adaptive Length Penalty.
+The reward $R$ for a rollout $o$ is:
+\begin{equation}
+  R(o) = r_{\text{acc}} - \beta \cdot \max(0, \text{SR}(q)) \cdot \frac{n_{\text{tokens}}}{L_{\text{max}}}
+\end{equation}
+where $r_{\text{acc}} \in \{0, 1\}$ is the verifiable accuracy reward, $\text{SR}(q)$ is the online solve rate (empirical difficulty estimate) across rollouts in the group, and $\beta$ is the global penalty coefficient.
+
+\subsection{Optimization via DeGRPO}
+
+To stabilize training, we use Decoupled GRPO (DeGRPO), which separates the gradient updates for the initial control token and subsequent response tokens.
+This prevents the high volume of response tokens from drowning out the signal for mode selection.
+We apply LoRA to all linear layers (Attention and MLP modules), as MLP layers are critical for retrieving factual knowledge and complex logic.
+
+\section{Experimental Design}
+
+\subsection{Headroom and Benchmarks}
+
+We move beyond the saturated GSM8K benchmark ($\sim$93\% baseline for our model) to MATH-500 and AIME 2024 ($\sim$16.6\% baseline).
+This provides the necessary headroom to observe if RL discovers novel recovery strategies.
+
+\subsection{Hypotheses}
+
+\begin{enumerate}
+  \item \textbf{H1:} DeGRPO with ALP achieves a superior accuracy-efficiency Pareto frontier than vanilla GRPO with static penalties.
+  \item \textbf{H2:} The \texttt{refine} policy specifically improves performance on AIME by enabling intrinsic self-correction.
+\end{enumerate}
+
+\section{Limitations}
+
+This scope omits Tool-Integrated Reasoning (TIR) and transfer to non-math domains like HumanEval.
+Future work could integrate Qwen2.5-Math-PRM-7B for dense, step-level process rewards to accelerate convergence.
+
+\bibliographystyle{plainnat}
+\bibliography{sample}
+
+\end{document}

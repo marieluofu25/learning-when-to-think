@@ -4,13 +4,19 @@ from __future__ import annotations
 
 import multiprocessing
 import re
+import textwrap
 from typing import Any
 
 from datasets import load_dataset
 
-from src.policy.tool_exec import extract_python_from_response
-
 _FENCE_RE = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
+
+
+def extract_python_from_response(text: str) -> str | None:
+    m = _FENCE_RE.search(text)
+    if m:
+        return textwrap.dedent(m.group(1)).strip()
+    return None
 _TERMINATE = "<terminate>"
 
 

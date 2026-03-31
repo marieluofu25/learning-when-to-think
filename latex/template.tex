@@ -1,0 +1,141 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2020
+
+% ready for submission
+% \usepackage{neurips_2020}
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2020}
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+% \usepackage[final]{project}
+% Fallback when project.sty is not present in local TeX installation.
+\IfFileExists{project.sty}{
+  \usepackage[final]{project}
+}{
+  \usepackage[numbers]{natbib}
+}
+
+% to avoid loading the natbib package, add option nonatbib:
+     % \usepackage[nonatbib]{neurips_2020}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\IfFileExists{nicefrac.sty}{\usepackage{nicefrac}}{} % optional compact fractions
+\usepackage{microtype}      % microtypography
+\microtypesetup{expansion=false}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+
+\title{Learning When to Think: RL for Adaptive Reasoning Computation in LLMs}
+
+\author{%
+  Ivan Andhika \\
+  School of Computing\\
+  University of Utah\\
+  \texttt{u1590903@utah.edu} \\
+  \and
+  Hao Ren \\
+  School of Computing\\
+  University of Utah\\
+  \texttt{u1527543@utah.edu} \\
+  \and
+  Ammon Gleason \\
+  School of Computing\\
+  University of Utah\\
+  \texttt{u1221580@utah.edu} \\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Large language models (LLMs) benefit from additional test-time computation, but fixed reasoning budgets are inefficient: easy problems are over-processed while hard problems still fail. We study adaptive reasoning as a reinforcement learning problem where the model decides when to continue, refine, or terminate. Our implementation uses a three-action policy and Group Relative Policy Optimization with two key modifications: Adaptive Length Penalty (ALP), which scales token cost by per-prompt group solve rate, and a DeGRPO-style objective that up-weights control-token gradients relative to response-token gradients. We train Qwen2.5-Math-7B-Instruct with LoRA over attention and MLP modules and evaluate in a MATH-500-only setting. Results are reported with accuracy and efficiency metrics (tokens, cost per correct), plus action usage analysis to verify adaptive compute allocation behavior.
+\end{abstract}
+
+\section{Introduction}
+
+Increasing test-time computation improves LLM reasoning performance, but naive scaling is compute-inefficient~\citep{snell2024scaling}. Chain-of-thought and self-consistency methods~\citep{wei2022chainofthought,wang2023selfconsistency} apply mostly fixed budgets and do not explicitly learn when to stop or when to self-correct. In practice, this causes two failure modes: overthinking on easy instances and insufficient exploration on difficult instances.
+
+We ask whether an LLM can learn to allocate reasoning effort per instance. We cast reasoning as a sequential decision process with three actions: \textbf{continue}, \textbf{refine}, and \textbf{terminate}. The refine action is an explicit self-correction mode: the model revisits recent reasoning before proceeding, inspired by process supervision and self-correction paradigms~\citep{lightman2023lets,kumar2024score,uesato2022process}. This design targets a realistic setting where control quality (which action to choose) matters as much as response quality (what tokens to generate).
+
+Our implementation aligns policy, objective, and evaluation: (1) ALP reward shaping based on per-prompt group solve rate; (2) DeGRPO-style weighted gradients separating control tokens from response tokens; and (3) a MATH-500-only benchmark setup with competition-style answer extraction (\texttt{\textbackslash boxed\{\}} and \texttt{\#\#\#\#}). The overall goal is to improve the accuracy-efficiency frontier rather than maximizing accuracy alone.
+
+\section{Related Work}
+
+\textbf{Chain-of-thought and self-consistency.} Prior work shows that intermediate reasoning and multi-sample voting improve math performance~\citep{wei2022chainofthought,wang2023selfconsistency}, but usually with fixed decode budgets and no learned stopping policy. Our method keeps these as baselines and optimizes a policy that can vary compute by instance.
+
+\textbf{RL for LLM reasoning.} GRPO-style methods optimize relative advantages within rollout groups without a critic network, making them practical for LLM fine-tuning~\citep{shao2024deepseekmath}. We build on this paradigm and adapt it to control-sensitive optimization where mode-selection tokens are explicitly emphasized.
+
+\textbf{Adaptive compute and length control.} Adaptive length penalties use online difficulty estimates (e.g., solve-rate signals) to avoid over-penalizing long reasoning on hard inputs~\citep{snell2024scaling}. We adopt this principle through ALP, where the token penalty scales with per-prompt group solve rate.
+
+\textbf{Self-correction as a policy action.} Process-level supervision and self-correction literature motivates explicit correction steps~\citep{lightman2023lets,zhang2025lessons,kumar2024score}. In our framework, \texttt{refine} is not a passive formatting token but a policy decision that triggers targeted re-checking before further generation.
+
+\section{Method}
+
+\subsection{Problem Formulation}
+
+We model reasoning as an MDP. Given problem $q$, the state $s_t$ contains the prompt and all prior reasoning turns. The action space is
+\[
+\mathcal{A}=\{\texttt{continue},\texttt{refine},\texttt{terminate}\}.
+\]
+\textbf{Continue} extends the current reasoning trajectory. \textbf{Refine} applies a self-correction nudge that asks the model to re-check and fix recent reasoning before proceeding. \textbf{Terminate} ends the episode and returns the final answer. Episodes stop at \texttt{terminate} or at a maximum step budget $T$.
+
+To support ablations, we include an \texttt{allow\_refine} switch that disables \texttt{refine} and reduces the action set to continue/terminate.
+
+\subsection{Reward Function}
+
+We use Adaptive Length Penalty (ALP) to balance correctness and efficiency:
+\begin{equation}
+    R_k = r_{\text{acc},k} - \beta \cdot \max(0,\mathrm{SR}(q)) \cdot \frac{n_{\text{tokens},k}}{L_{\max}}
+\end{equation}
+where $k$ indexes rollouts for the same prompt, $r_{\text{acc},k}\in\{0,1\}$ is exact-match correctness, and $\mathrm{SR}(q)=\frac{1}{K}\sum_k r_{\text{acc},k}$ is group solve rate (an online proxy for prompt difficulty). $n_{\text{tokens},k}$ is rollout length and $L_{\max}$ is a normalization cap (configured directly or derived from decode limits). This formulation penalizes length more strongly when a prompt is already easy for the current policy (high solve rate), and less strongly when the prompt is hard (low solve rate).
+
+\subsection{Training Approaches}
+
+\textbf{Primary training method (GRPO + DeGRPO weighting):} For each prompt, we sample $K$ rollouts, compute ALP rewards, normalize advantages within the group, and optimize policy log-probabilities. Following the audit-guided design, we split generated tokens per step into control and response slices and use weighted loss
+\[
+\mathcal{L}=-A_k\left(w_{\text{ctrl}}\log p_{\text{ctrl}} + w_{\text{resp}}\log p_{\text{resp}}\right)+\lambda_{\text{KL}}\mathrm{KL},
+\]
+with $w_{\text{ctrl}}>w_{\text{resp}}$ to prevent control-signal washout. A \texttt{degrpo=false} flag restores vanilla uniform weighting for ablation.
+
+\textbf{LoRA adaptation:} We use LoRA on both attention and MLP projections (e.g., \texttt{q/k/v/o\_proj}, \texttt{gate/up/down\_proj}), with configurable rank and alpha.
+
+\textbf{Implementation scope:} The current paper template describes the active MATH-500 pipeline. Other training routes (e.g., SFT/DPO) are optional and not required for the core experiments reported here.
+
+\section{Experimental Design}
+
+\subsection{Hypotheses}
+
+\begin{enumerate}
+    \item \textbf{H1:} ALP + DeGRPO improves the accuracy--efficiency Pareto frontier over fixed-compute and vanilla-GRPO baselines on MATH-500.
+    \item \textbf{H2:} The learned policy allocates more computation (tokens/steps) to harder prompts and less to easier prompts.
+    \item \textbf{H3:} Action usage shifts with difficulty, with relatively more \texttt{refine}/\texttt{continue} on difficult cases and more \texttt{terminate} on easier cases.
+\end{enumerate}
+
+\subsection{Domain, Setup, and Evaluation}
+
+We use \textbf{MATH-500 only} for the main experiments, with Qwen2.5-Math-7B-Instruct as base model and LoRA adaptation (default $r{=}16$, $\alpha{=}32$). Outputs are graded using normalized math-string matching from final \texttt{\#\#\#\#} and/or \texttt{\textbackslash boxed\{...\}} extraction. We treat GSM8K~\citep{cobbe2021gsm8k} as optional sanity-check context, not as the primary benchmark in this template.
+
+\textbf{Baselines:} (1) CoT single-pass decoding; (2) direct-answer baseline; (3) vanilla GRPO objective (\texttt{degrpo=false}); (4) no-refine policy (\texttt{allow\_refine=false}) for action-space ablation.
+
+\textbf{Our method:} GRPO with ALP reward and DeGRPO weighted control-vs-response optimization.
+
+\textbf{Metrics:} accuracy, average tokens per problem, cost per correct answer, average steps, parse/format success rates, and aggregate action counts. We report comparisons on fixed MATH-500 subsets configured in YAML. Ablations over $\beta$, $L_{\max}$, \texttt{degrpo} on/off, and control weighting (\texttt{w\_ctrl}, \texttt{w\_resp}, \texttt{n\_control\_tokens}) characterize the accuracy--efficiency trade-off.
+
+\bibliographystyle{plainnat}
+\bibliography{sample}
+
+\end{document}

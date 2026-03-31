@@ -9,5 +9,5 @@ eval_output_dir: "results/eval_humaneval"
 
 max_steps: 5
 max_tokens_per_step: 512
-disable_tools: false
+allow_refine: true
 humaneval_max_tokens: 512

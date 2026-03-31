@@ -8,7 +8,12 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from src.data.gsm8k import extract_hash_answer, extract_predicted_number, grade_answer, has_valid_format
+from src.data.math_500 import (
+    extract_hash_answer,
+    extract_predicted_answer,
+    grade_answer,
+    has_valid_format,
+)
 from src.data.humaneval import extract_humaneval_completion, passes_humaneval
 
 
@@ -46,11 +51,11 @@ def evaluate_results(results: list[dict], *, dataset_kind: str = "gsm8k") -> dic
     total_tool_calls = sum(int(r.get("n_tool_calls", 0)) for r in results)
 
     texts = [r.get("answer_text", "") for r in results]
-    if dataset_kind == "gsm8k":
+    if dataset_kind in {"gsm8k", "math_500"}:
         format_ok = sum(1 for t in texts if has_valid_format(t))
         parse_fail = sum(
             1 for t in texts
-            if extract_hash_answer(t) is None and extract_predicted_number(t) is None
+            if extract_hash_answer(t) is None and extract_predicted_answer(t) is None
         )
         multi_hash = sum(1 for t in texts if t.count("####") > 1)
     else:
@@ -72,7 +77,7 @@ def evaluate_results(results: list[dict], *, dataset_kind: str = "gsm8k") -> dic
         "avg_tool_calls_per_problem": total_tool_calls / max(total, 1),
         "action_counts_total": action_counts_total,
     }
-    if dataset_kind == "gsm8k":
+    if dataset_kind in {"gsm8k", "math_500"}:
         out["format_success_rate"] = format_ok / max(total, 1)
         out["parse_fail_rate"] = parse_fail / max(total, 1)
         out["multi_answer_rate"] = multi_hash / max(total, 1)
@@ -93,7 +98,7 @@ def run_cot_baseline(
     total = len(dataset)
     for idx, item in enumerate(dataset, start=1):
         out = cot_generate(model, tokenizer, item["question"], **gen_kwargs)
-        predicted = extract_predicted_number(out["answer_text"])
+        predicted = extract_predicted_answer(out["answer_text"])
         correct = grade_answer(predicted, item["answer_number"])
         results.append({
             "question": item["question"],
@@ -123,7 +128,7 @@ def run_direct_baseline(
     total = len(dataset)
     for idx, item in enumerate(dataset, start=1):
         out = direct_generate(model, tokenizer, item["question"], **gen_kwargs)
-        predicted = extract_predicted_number(out["answer_text"])
+        predicted = extract_predicted_answer(out["answer_text"])
         correct = grade_answer(predicted, item["answer_number"])
         results.append({
             "question": item["question"],
@@ -154,11 +159,11 @@ def run_self_consistency(
     results = []
     total = len(dataset)
     for idx, item in enumerate(dataset, start=1):
-        predictions: list[float | None] = []
+        predictions: list[str | None] = []
         token_counts: list[int] = []
         for _ in range(k):
             out = cot_generate(model, tokenizer, item["question"], **gen_kwargs)
-            pred = extract_predicted_number(out["answer_text"])
+            pred = extract_predicted_answer(out["answer_text"])
             predictions.append(pred)
             token_counts.append(out["total_tokens"])
 
@@ -190,11 +195,15 @@ def run_adaptive_policy(
     dataset: list[dict],
     stage_name: str = "Adaptive",
     pulse_every: int = 1,
-    disable_tools: bool = False,
+    allow_refine: bool = True,
+    allow_verify: bool | None = None,
     system_prompt: str | None = None,
     **gen_kwargs,
 ) -> list[dict]:
     from src.policy.adaptive import adaptive_generate
+
+    if allow_verify is not None:
+        allow_refine = allow_verify
 
     results = []
     total = len(dataset)
@@ -203,11 +212,11 @@ def run_adaptive_policy(
             model,
             tokenizer,
             item["question"],
-            disable_tools=disable_tools,
+            allow_refine=allow_refine,
             system_prompt=system_prompt,
             **gen_kwargs,
         )
-        predicted = extract_predicted_number(out["answer_text"])
+        predicted = extract_predicted_answer(out["answer_text"])
         correct = grade_answer(predicted, item["answer_number"])
         results.append({
             "question": item["question"],
@@ -218,7 +227,6 @@ def run_adaptive_policy(
             "total_tokens": out["total_tokens"],
             "num_steps": out["num_steps"],
             "terminated": out.get("terminated", False),
-            "n_tool_calls": out.get("n_tool_calls", 0),
             "action_counts": out.get("action_counts", {}),
         })
         if idx % max(pulse_every, 1) == 0 or idx == total:
@@ -261,10 +269,25 @@ def run_adaptive_humaneval(
     dataset: list[dict],
     stage_name: str = "Adaptive-HE",
     pulse_every: int = 1,
-    disable_tools: bool = False,
+    allow_refine: bool = True,
     **gen_kwargs,
 ) -> list[dict]:
-    from src.policy.adaptive import CODING_SYSTEM_PROMPT, adaptive_generate
+    from src.policy.adaptive import (
+        CONTINUE_TOKEN,
+        REFINE_TOKEN,
+        TERMINATE_TOKEN,
+        adaptive_generate,
+    )
+
+    he_system = (
+        "You are an expert Python programmer completing HumanEval-style tasks.\n"
+        "Each assistant message must start by choosing exactly one action on its own line:\n"
+        f"- {CONTINUE_TOKEN} — more reasoning or partial code\n"
+        f"- {REFINE_TOKEN} — re-read the spec and your last step\n"
+        f"- {TERMINATE_TOKEN} — final answer: output the **complete function body** that fits "
+        "the given signature/docstring (only the indented body lines, or a full ```python block).\n"
+        "The grader concatenates your completion after the task prompt."
+    )
 
     results = []
     n = len(dataset)
@@ -273,8 +296,8 @@ def run_adaptive_humaneval(
             model,
             tokenizer,
             item["prompt"],
-            disable_tools=disable_tools,
-            system_prompt=CODING_SYSTEM_PROMPT,
+            allow_refine=allow_refine,
+            system_prompt=he_system,
             **gen_kwargs,
         )
         completion = extract_humaneval_completion(out["answer_text"])
@@ -286,7 +309,6 @@ def run_adaptive_humaneval(
             "total_tokens": out["total_tokens"],
             "num_steps": out["num_steps"],
             "terminated": out.get("terminated", False),
-            "n_tool_calls": out.get("n_tool_calls", 0),
             "action_counts": out.get("action_counts", {}),
         })
         if idx % max(pulse_every, 1) == 0 or idx == n:

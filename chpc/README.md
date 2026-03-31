@@ -70,8 +70,8 @@ export HF_TOKEN=hf_...
 
 Configs:
 
-- `configs/chpc_debug.yaml` — short sanity run (same **Math-7B** backbone, small subset).
-- `configs/chpc_grpo.yaml` — longer GSM8K run.
+- `configs/chpc_debug.yaml` — short sanity run (same **Math-7B** backbone, small **MATH-500** subset).
+- `configs/chpc_grpo.yaml` — longer **MATH-500** GRPO run with **ALP** rewards (`beta`, `L_max`) and optional **DeGRPO** (`degrpo`, `w_ctrl`, `w_resp`).
 - `configs/chpc_qwen25_7b_instruct.yaml` — optional **Qwen2.5-7B-Instruct** track for stronger code/general transfer.
 
 ```bash

@@ -1,6 +1,8 @@
 # Learning when to think
 
-RL (GRPO) + LoRA trains an adaptive reasoning policy over five meta-actions: **continue**, **verify**, **sample_alt**, **call_tool** (sandboxed Python), **terminate**. Rewards follow the proposal-style form \(r_{\text{correct}} + \text{format bonus} - \lambda\cdot n_{\text{tokens}} - \mu\cdot n_{\text{tool}}\).
+RL (**GRPO**) + **LoRA** trains an adaptive reasoning policy with three meta-actions: **continue**, **refine** (self-correction nudge), and **terminate**. Training uses **ALP-style** group rewards: \(r_{\text{acc}} - \beta \max(0, \text{SR}) \cdot n_{\text{tokens}} / L_{\max}\), where **SR** is the empirical solve rate across rollouts for the same prompt. **DeGRPO** optionally up-weights log-probability gradients on the short **control** prefix (action token) versus the rest of each step (`degrpo`, `w_ctrl`, `w_resp`); set `degrpo: false` for vanilla GRPO on all generated tokens.
+
+The default benchmark is **MATH-500** (`HuggingFaceH4/MATH-500`): answers are graded after normalizing LaTeX, using `#### <answer>` and/or `\boxed{...}` in model outputs. **GSM8K** is not the primary track in this repo (optional sanity checks can use the same grading helpers if you add a loader).
 
 ## Quickstart (local)
 
@@ -9,19 +11,19 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e .
 ```
 
-Train (see `configs/default.yaml`; default backbone is **Qwen2.5-Math-7B-Instruct**, `use_qlora: false` for machines without bitsandbytes / small GPU):
+Train (see `configs/default.yaml`; default backbone is **Qwen2.5-Math-7B-Instruct**):
 
 ```bash
 python scripts/train.py --config configs/default.yaml --output-dir checkpoints/grpo
 ```
 
-Evaluate GSM8K (baselines + adaptive + direct answer):
+Evaluate MATH-500 (CoT + Direct baselines + adaptive with and without refine):
 
 ```bash
 python scripts/eval.py --config configs/default.yaml --checkpoint checkpoints/grpo/final
 ```
 
-HumanEval-only eval (expects a trained LoRA at `checkpoint_path` in the YAML):
+HumanEval eval (separate config; adaptive uses the same three actions with a code-specific system prompt in `src/eval/evaluate.py`):
 
 ```bash
 python scripts/eval.py --config configs/eval_humaneval.yaml
@@ -35,17 +37,16 @@ python scripts/plot_results.py --comparison results/eval/comparison.json
 
 ## Metrics
 
-- **GSM8K:** accuracy (numeric match), avg tokens per problem, cost per correct answer, aggregated **action_counts_total**, **total_tool_calls**.
-- **HumanEval:** pass@1 via official tests in an isolated subprocess.
+- **MATH-500:** accuracy (normalized string match), avg tokens per problem, cost per correct answer, **format_success_rate** (`####` or `\boxed{}`), aggregated **action_counts_total**.
 
 ## CHPC (University of Utah)
 
-See [chpc/README.md](chpc/README.md) for SLURM, `HF_HOME` on scratch, and **Qwen2.5-Math-7B-Instruct + QLoRA** configs (`configs/chpc_grpo.yaml`, `configs/chpc_debug.yaml`).
+See [chpc/README.md](chpc/README.md) for SLURM, `HF_HOME` on scratch, and **Qwen2.5-Math-7B-Instruct + QLoRA** configs.
 
 ## Layout
 
 - `src/policy/adaptive.py` — shared rollout loop for train and eval  
-- `src/policy/tool_exec.py` — fenced-code extraction + sandboxed execution  
-- `src/train/grpo.py` — GRPO + LoRA  
+- `src/train/grpo.py` — GRPO + ALP + DeGRPO + LoRA  
 - `src/train/model_loading.py` — optional 4-bit QLoRA base load  
+- `src/data/math_500.py` — MATH-500 load + extraction + grading  
 - `src/data/humaneval.py` — HumanEval load + grading  

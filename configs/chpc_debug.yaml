@@ -1,6 +1,6 @@
 model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
 
-dataset: "gsm8k"
+dataset: "math_500"
 train_subset_size: 32
 eval_subset_size: 16
 
@@ -9,13 +9,17 @@ torch_dtype: "bfloat16"
 checkpoint_path: "checkpoints/grpo_debug/final"
 eval_output_dir: "results/eval_debug"
 
-max_steps: 4
+max_steps: 3
 max_tokens_per_step: 256
-disable_tools: false
+allow_refine: true
 
-num_rollouts_per_problem: 2
-lambda_cost: 1.0e-5
-mu_tool: 0.05
+num_rollouts_per_problem: 4
+beta: 0.02
+L_max: null
+degrpo: true
+w_ctrl: 2.0
+w_resp: 1.0
+format_bonus: 0.0
 kl_coef: 0.0
 learning_rate: 1.0e-5
 num_epochs: 1

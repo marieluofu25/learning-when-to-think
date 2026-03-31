@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from src.data.gsm8k import load_gsm8k
+from src.data.math_500 import load_math_500
 from src.train.grpo import setup_lora, train_grpo
 
 
@@ -34,7 +34,7 @@ def main():
     print("Setting up LoRA (rank=16)...")
     model = setup_lora(model, rank=16, alpha=32)
 
-    train_data = load_gsm8k("train", subset_size=20)
+    train_data = load_math_500("test", subset_size=20)
     print(f"Training on {len(train_data)} problems")
 
     step_log: list[dict] = []
@@ -56,13 +56,14 @@ def main():
         num_rollouts=4,
         max_steps=3,
         max_tokens_per_step=128,
-        lambda_cost=1e-5,
-        mu_tool=0.05,
+        beta=0.02,
         learning_rate=1e-4,
         save_path=str(output_dir / "final"),
         log_callback=log_fn,
         gradient_accumulation_steps=1,
-        disable_tools=False,
+        allow_refine=True,
+        degrpo=True,
+        n_control_tokens=16,
     )
 
     (output_dir / "history.json").write_text(json.dumps(history, indent=2))
