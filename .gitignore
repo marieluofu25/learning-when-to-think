@@ -14,6 +14,8 @@ checkpoints/
 # Evaluation results
 results/
 
+local_only/
+
 # IDE / editor
 .vscode/
 .idea/
