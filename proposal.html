@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Proposal — Learning When to Think</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1a1814;
+  --ink2: #3d3a35;
+  --ink3: #6b6760;
+  --rule: #d8d4cc;
+  --rule2: #ece9e3;
+  --bg: #faf8f4;
+  --bg2: #f3f0ea;
+  --bg3: #eae6de;
+  --accent: #2d5a3d;
+  --accent2: #4a8c62;
+  --accent3: #c8e6d0;
+  --coral: #b84a2a;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--ink);font-size:15.5px;line-height:1.75;}
+
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:218px;background:var(--bg2);border-right:1px solid var(--rule);padding:2rem 1.25rem;overflow-y:auto;z-index:100;}
+#sidebar .logo{font-family:'DM Serif Display',serif;font-size:13px;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid var(--rule);}
+#sidebar nav a{display:block;font-size:12.5px;color:var(--ink3);text-decoration:none;padding:5px 8px;border-radius:5px;margin-bottom:2px;transition:all .15s;font-weight:500;}
+#sidebar nav a:hover,#sidebar nav a.active{background:var(--accent3);color:var(--accent);}
+#sidebar .slabel{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin:1.25rem 0 .4rem .5rem;opacity:.6;}
+
+#main{margin-left:218px;min-height:100vh;}
+
+header{background:var(--ink);color:white;padding:4rem 3rem 3rem;position:relative;overflow:hidden;}
+header::before{content:'';position:absolute;top:-40px;right:-40px;width:300px;height:300px;background:#2d5a3d;border-radius:50%;opacity:.08;}
+header .label{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#4a8c62;margin-bottom:1rem;}
+header h1{font-family:'DM Serif Display',serif;font-size:clamp(24px,3.5vw,38px);line-height:1.2;max-width:620px;margin-bottom:1.5rem;font-weight:400;}
+header h1 em{font-style:italic;color:#9fe1cb;}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.5rem;}
+.achip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:4px 14px;font-size:13px;color:rgba(255,255,255,.85);}
+.meta{display:flex;gap:1.5rem;font-size:12.5px;color:rgba(255,255,255,.45);}
+
+.content{max-width:720px;margin:0 auto;padding:3rem 3rem 6rem;}
+
+.section{margin-bottom:4rem;scroll-margin-top:2rem;}
+.sec-hdr{display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;padding-bottom:.75rem;border-bottom:1.5px solid var(--rule);}
+.sec-num{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--accent);background:var(--accent3);padding:3px 8px;border-radius:4px;letter-spacing:.06em;}
+.sec-title{font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;color:var(--ink);}
+
+.abs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:1rem;}
+.abs-card{background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:1rem 1.1rem;}
+.abs-card .q{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:.4rem;}
+.abs-card p{font-size:14px;line-height:1.65;color:var(--ink2);}
+
+p{margin-bottom:1rem;color:var(--ink2);}p:last-child{margin-bottom:0;}
+
+.paper-list{display:flex;flex-direction:column;gap:10px;margin-top:.5rem;}
+.paper{display:flex;gap:14px;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:.9rem 1rem;cursor:pointer;transition:border-color .15s;}
+.paper:hover{border-color:var(--accent2);}
+.pnum{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--accent);min-width:24px;padding-top:1px;}
+.ptitle{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:3px;}
+.pmeta{font-size:12px;color:var(--ink3);margin-bottom:5px;}
+.pdesc{font-size:13px;color:var(--ink2);line-height:1.55;}
+.pcontrast{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--rule);font-size:12.5px;color:var(--ink3);line-height:1.55;}
+.paper.open .pcontrast{display:block;}
+.ptog{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-top:5px;}
+
+.insight{background:var(--ink);color:white;border-radius:12px;padding:1.5rem 1.75rem;margin:1.25rem 0;position:relative;overflow:hidden;}
+.insight::before{content:'"';font-family:'DM Serif Display',serif;font-size:120px;color:#4a8c62;opacity:.15;position:absolute;top:-20px;left:10px;line-height:1;}
+.insight p{font-family:'DM Serif Display',serif;font-size:17px;line-height:1.55;color:rgba(255,255,255,.9);position:relative;z-index:1;}
+
+.atbl{width:100%;border-collapse:collapse;margin:1.25rem 0;font-size:13.5px;}
+.atbl th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--rule);}
+.atbl td{padding:10px 12px;border-bottom:1px solid var(--rule2);vertical-align:top;color:var(--ink2);}
+.atbl tr:last-child td{border-bottom:none;}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;font-family:'DM Mono',monospace;}
+.bt{background:#e1f5ee;color:#085041;}.bc{background:#faece7;color:#712b13;}.bp{background:#eeedfe;color:#3c3489;}.ba{background:#faeeda;color:#633806;}.bg_{background:#f1efe8;color:#444441;}.bln{background:#b84a2a;color:white;font-size:10px;padding:1px 6px;border-radius:3px;margin-left:4px;vertical-align:middle;}
+
+.formula{background:var(--bg2);border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:1.1rem 1.25rem;margin:1.25rem 0;font-family:'DM Mono',monospace;font-size:15px;color:var(--ink);line-height:1.9;}
+.formula .t{color:var(--accent);font-weight:500;}
+.formula .sub{font-size:12px;color:var(--ink3);display:block;margin-top:.5rem;font-family:'Instrument Sans',sans-serif;}
+
+.model-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:1rem 0;}
+.mcard{background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:1rem;transition:border-color .15s;}
+.mcard:hover{border-color:var(--accent2);}
+.mcard.rec{border-color:var(--accent);border-width:1.5px;}
+.mname{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:2px;}
+.mhf{font-family:'DM Mono',monospace;font-size:11px;color:var(--ink3);margin-bottom:6px;}
+.mtags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;}
+.mtag{font-size:11px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--ink3);font-weight:500;}
+.mtag.r{background:var(--accent3);color:var(--accent);}
+.mnote{font-size:12.5px;color:var(--ink3);line-height:1.5;}
+
+.wf-tabs{display:flex;border:1px solid var(--rule);border-radius:10px 10px 0 0;overflow:hidden;}
+.wf-tab{flex:1;padding:10px 16px;font-size:13px;font-weight:600;text-align:center;cursor:pointer;background:var(--bg3);color:var(--ink3);border:none;transition:all .15s;border-right:1px solid var(--rule);}
+.wf-tab:last-child{border-right:none;}
+.wf-tab.active{background:var(--ink);color:white;}
+.wf-panel{display:none;border:1px solid var(--rule);border-top:none;border-radius:0 0 10px 10px;}
+.wf-panel.active{display:block;}
+.flow{display:flex;flex-direction:column;align-items:center;padding:1.25rem 1.5rem;gap:0;}
+.fn{width:100%;max-width:480px;border-radius:8px;padding:.7rem 1rem;text-align:center;font-size:13.5px;font-weight:600;color:white;}
+.fn sub{font-size:11px;font-weight:400;opacity:.8;display:block;margin-top:1px;}
+.fn.gray{background:#5F5E5A;}.fn.purple{background:#534AB7;}.fn.teal{background:#0F6E56;}.fn.blue{background:#185FA5;}.fn.amber{background:#854F0B;}.fn.green{background:#3B6D11;}.fn.coral{background:#993C1D;}
+.farr{font-size:18px;color:var(--rule);line-height:1;padding:3px 0;}
+.fsplit{display:flex;gap:10px;width:100%;max-width:480px;}
+.fsplit .fn{flex:1;}
+.fnote{font-size:11.5px;color:var(--ink3);font-style:italic;margin-top:8px;text-align:center;}
+.ffb{width:100%;max-width:480px;text-align:center;font-size:11.5px;color:var(--accent);font-weight:600;padding:6px;border:1.5px dashed var(--accent3);border-radius:6px;margin-top:4px;}
+
+.hyp-list{display:flex;flex-direction:column;gap:10px;margin:1rem 0;}
+.hyp{display:flex;gap:14px;background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:1rem 1.1rem;}
+.hnum{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:white;background:var(--accent);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.hlabel{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px;}
+.htext{font-size:14px;color:var(--ink);line-height:1.6;margin-bottom:6px;}
+.heval{font-size:13px;color:var(--ink3);line-height:1.55;}
+
+.dom-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:1rem 0;}
+.dcard{background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:1rem;}
+.dn{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:4px;}
+.ds{font-size:12.5px;color:var(--ink3);line-height:1.55;}
+.dstat{font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);margin-top:5px;}
+
+.refs{display:flex;flex-direction:column;gap:8px;}
+.ref{font-size:13px;color:var(--ink3);padding-left:2.5rem;position:relative;line-height:1.55;}
+.ref::before{content:attr(data-n);position:absolute;left:0;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);font-weight:500;top:1px;}
+
+.prog{position:fixed;top:0;left:218px;right:0;height:2px;background:var(--accent);transform-origin:left;transform:scaleX(0);z-index:200;}
+h3{font-size:16px;font-weight:600;color:var(--ink);}
+
+@media(max-width:900px){
+  #sidebar{display:none;}#main{margin-left:0;}
+  header{padding:2.5rem 1.5rem 2rem;}.content{padding:2rem 1.5rem 4rem;}
+  .abs-grid,.model-grid,.dom-grid{grid-template-columns:1fr;}
+  .prog{left:0;}
+}
+</style>
+</head>
+<body>
+<div class="prog" id="prog"></div>
+
+<aside id="sidebar">
+  <div class="logo">CS Research<br>Proposal 2025</div>
+  <nav>
+    <div class="slabel">Sections</div>
+    <a href="#abstract">Abstract</a>
+    <a href="#intro">Introduction</a>
+    <a href="#related">Related Work</a>
+    <a href="#method">Method</a>
+    <a href="#arch">Architecture</a>
+    <a href="#workflow">Workflows</a>
+    <a href="#exp">Experimental Design</a>
+    <a href="#refs">References</a>
+    <div class="slabel">Team</div>
+    <a href="#">Ivan Andhika · u1590903</a>
+    <a href="#">Hao Ren · u1527543</a>
+    <a href="#">Ammon Gleason · u1221580</a>
+  </nav>
+</aside>
+
+<main id="main">
+<header>
+  <div class="label">Project Proposal &nbsp;·&nbsp; Deep Reinforcement Learning</div>
+  <h1>Learning When to Think: <em>RL for Adaptive Reasoning Computation in LLMs</em></h1>
+  <div class="authors">
+    <span class="achip">Ivan Andhika &middot; u1590903</span>
+    <span class="achip">Hao Ren &middot; u1527543</span>
+    <span class="achip">Ammon Gleason &middot; u1221580</span>
+  </div>
+  <div class="meta">
+    <span>University of Utah</span>
+    <span>&middot;</span>
+    <span>GSM8K &amp; HumanEval</span>
+    <span>&middot;</span>
+    <span>PPO / GRPO + LoRA</span>
+  </div>
+</header>
+
+<div class="content">
+
+<!-- ABSTRACT -->
+<section class="section" id="abstract">
+  <div class="sec-hdr"><span class="sec-num">00</span><h2 class="sec-title">Abstract</h2></div>
+  <div class="abs-grid">
+    <div class="abs-card">
+      <div class="q">What is the problem?</div>
+      <p>Large language models allocate a fixed amount of reasoning computation for every input regardless of difficulty. Simple problems are over-processed; hard problems may terminate before sufficient exploration.</p>
+    </div>
+    <div class="abs-card">
+      <div class="q">Why does it matter?</div>
+      <p>Inference compute is expensive. A model that wastes tokens on trivial problems or gives up too early on hard ones is both inefficient and inaccurate — a critical limitation for real-world deployment at scale.</p>
+    </div>
+    <div class="abs-card">
+      <div class="q">Proposed solution</div>
+      <p>We formulate reasoning as a sequential decision-making problem. An RL policy (PPO/GRPO) trained with LoRA learns to select from five actions — continue, verify, sample alternative, call tool, or terminate — based on problem difficulty signals.</p>
+    </div>
+    <div class="abs-card">
+      <div class="q">Planned experiments</div>
+      <p>We compare our adaptive policy against fixed-compute baselines (standard CoT, self-consistency) on GSM8K and HumanEval, measuring task accuracy, token usage, and compute-per-correct-answer.</p>
+    </div>
+  </div>
+</section>
+
+<!-- INTRODUCTION -->
+<section class="section" id="intro">
+  <div class="sec-hdr"><span class="sec-num">01</span><h2 class="sec-title">Introduction</h2></div>
+  <p>Modern large language models have demonstrated impressive reasoning capabilities, largely attributed to test-time computation strategies such as chain-of-thought (CoT) prompting, self-consistency sampling, and process-reward-guided search. However, a persistent inefficiency underlies these approaches: the amount of computation allocated to each problem is fixed at design time rather than determined by the problem itself.</p>
+  <p>Consider two inputs: <em>"What is 7 × 8?"</em> and <em>"A train leaves Chicago at 9am traveling 60 mph..."</em>. Current systems would allocate the same reasoning budget to both. This is analogous to a student spending equal time on every exam question — clearly suboptimal. The student who has internalized <em>when</em> to think carefully outperforms one who always thinks the same amount.</p>
+  <p>We investigate whether reinforcement learning can teach an LLM exactly this skill. We frame reasoning as a sequential decision-making problem in which the model acts as an RL agent, choosing from a discrete action space at each step: continue the chain-of-thought, verify an intermediate result, sample an alternative solution path, invoke a Python executor for computationally intensive sub-problems, or terminate and return the answer.</p>
+  <p>This problem is directly relevant to this course's core themes of reinforcement learning, policy optimization, and sequential decision-making. It applies RL not to a game environment but to the internal reasoning of a language model — a novel and practically significant domain where reward signals (answer correctness, token cost) are naturally defined and the policy space is rich and structured.</p>
+</section>
+
+<!-- RELATED WORK -->
+<section class="section" id="related">
+  <div class="sec-hdr"><span class="sec-num">02</span><h2 class="sec-title">Related Work</h2></div>
+  <p>Click any paper to expand our comparison with the proposed approach.</p>
+  <div class="paper-list">
+
+    <div class="paper" onclick="toggleP(this)">
+      <div class="pnum">[1]</div>
+      <div>
+        <div class="ptitle">Let Me Think! Adaptive Chain-of-Thought Reasoning (Yao et al., 2023)</div>
+        <div class="pmeta">NeurIPS 2023 &middot; Chain-of-thought, adaptive computation</div>
+        <div class="pdesc">Conditions the number of reasoning steps on a learned difficulty signal, showing that dynamic CoT length improves accuracy while reducing unnecessary computation on easy problems.</div>
+        <div class="pcontrast"><strong>Our difference:</strong> Yao et al. condition step count on a pre-computed scalar difficulty score before inference begins. We learn a full sequential policy that can change direction mid-reasoning (e.g., switching to tool use when CoT fails), making our approach strictly more expressive.</div>
+        <div class="ptog">▾ Compare with our work</div>
+      </div>
+    </div>
+
+    <div class="paper" onclick="toggleP(this)">
+      <div class="pnum">[2]</div>
+      <div>
+        <div class="ptitle">Proximal Policy Optimization Algorithms (Schulman et al., 2017)</div>
+        <div class="pmeta">OpenAI Technical Report &middot; RL algorithm, arXiv:1707.06347</div>
+        <div class="pdesc">Introduces PPO, a stable and sample-efficient policy gradient algorithm using a clipped surrogate objective to prevent large policy updates. PPO has become the dominant algorithm for RLHF in language models.</div>
+        <div class="pcontrast"><strong>Our use:</strong> PPO (or GRPO, its group-relative variant) serves as our RL optimizer. We adapt the reward to include both answer correctness and token cost — a joint objective not considered in the original paper.</div>
+        <div class="ptog">▾ Compare with our work</div>
+      </div>
+    </div>
+
+    <div class="paper" onclick="toggleP(this)">
+      <div class="pnum">[3]</div>
+      <div>
+        <div class="ptitle">DeepSeekMath: Pushing the Limits of Mathematical Reasoning (Shao et al., 2024)</div>
+        <div class="pmeta">arXiv:2402.03300 &middot; Math reasoning, GRPO</div>
+        <div class="pdesc">Applies GRPO (Group Relative Policy Optimization) to train LLMs on mathematical reasoning, achieving state-of-the-art on GSM8K and MATH benchmarks by normalizing rewards within a sampled group.</div>
+        <div class="pcontrast"><strong>Our difference:</strong> DeepSeekMath uses GRPO to maximize accuracy only. We extend GRPO with a cost-penalized reward (R = correctness − λ·tokens − μ·tool_calls) to jointly optimize the accuracy-efficiency frontier.</div>
+        <div class="ptog">▾ Compare with our work</div>
+      </div>
+    </div>
+
+    <div class="paper" onclick="toggleP(this)">
+      <div class="pnum">[4]</div>
+      <div>
+        <div class="ptitle">Toolformer: Language Models Can Teach Themselves to Use Tools (Schick et al., 2023)</div>
+        <div class="pmeta">NeurIPS 2023 &middot; Tool use, API calling</div>
+        <div class="pdesc">A self-supervised method for teaching LLMs to call external APIs (calculator, search, calendar) by inserting API call annotations into training text and filtering for helpful calls.</div>
+        <div class="pcontrast"><strong>Our difference:</strong> Toolformer uses supervised imitation learning — the model mimics pre-annotated patterns. We learn tool-calling behavior through RL rewards, allowing the policy to discover when tool use is beneficial without requiring labeled demonstrations.</div>
+        <div class="ptog">▾ Compare with our work</div>
+      </div>
+    </div>
+
+    <div class="paper" onclick="toggleP(this)">
+      <div class="pnum">[5]</div>
+      <div>
+        <div class="ptitle">Self-Consistency Improves Chain of Thought Reasoning (Wang et al., 2023)</div>
+        <div class="pmeta">ICLR 2023 &middot; Reasoning, sampling strategy</div>
+        <div class="pdesc">Samples multiple reasoning chains and takes a majority vote over final answers, demonstrating consistent accuracy improvements at N× compute cost per problem regardless of difficulty.</div>
+        <div class="pcontrast"><strong>Our difference:</strong> Self-consistency is our primary baseline. It allocates N chains to every problem uniformly. Our adaptive policy selectively allocates more effort — spending the equivalent budget only where the problem actually demands it.</div>
+        <div class="ptog">▾ Compare with our work</div>
+      </div>
+    </div>
+
+    <div class="paper" onclick="toggleP(this)">
+      <div class="pnum">[6]</div>
+      <div>
+        <div class="ptitle">LoRA: Low-Rank Adaptation of Large Language Models (Hu et al., 2022)</div>
+        <div class="pmeta">ICLR 2022 &middot; Parameter-efficient fine-tuning</div>
+        <div class="pdesc">Freezes pre-trained model weights and injects trainable low-rank decomposition matrices into each Transformer layer, reducing trainable parameters by orders of magnitude while preserving performance.</div>
+        <div class="pcontrast"><strong>Our use:</strong> LoRA is our fine-tuning mechanism. We apply LoRA adapters to the base LLM so that RL policy gradients update only ~0.1–1% of parameters, making RL training feasible on academic GPU budgets (single A100 or free Colab T4).</div>
+        <div class="ptog">▾ Compare with our work</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- METHOD -->
+<section class="section" id="method">
+  <div class="sec-hdr"><span class="sec-num">03</span><h2 class="sec-title">Method</h2></div>
+
+  <div class="insight">
+    <p>Key insight: reasoning is not a fixed-length monologue — it is a sequential decision process. Teaching a model when to stop, when to check, and when to delegate to a tool is strictly more powerful than teaching it to reason longer.</p>
+  </div>
+
+  <p>We formulate the reasoning process as a Markov Decision Process (MDP). The state at step <em>t</em> is the concatenation of the problem and all tokens generated so far (the reasoning trace). The action space <em>A</em> consists of five discrete meta-actions:</p>
+
+  <table class="atbl">
+    <thead><tr><th>Action</th><th>Mechanism</th><th>When preferred</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge bt">CONTINUE</span></td><td>Generate next CoT tokens</td><td>Problem requires more logical steps</td></tr>
+      <tr><td><span class="badge bt">VERIFY</span></td><td>Re-evaluate last intermediate result</td><td>Uncertain intermediate; high-stakes step</td></tr>
+      <tr><td><span class="badge bt">SAMPLE_ALT</span></td><td>Restart with different approach</td><td>Current CoT path appears stuck</td></tr>
+      <tr><td><span class="badge bc">CALL_TOOL<span class="bln">NEW</span></span></td><td>Execute Python code; inject result</td><td>Arithmetic-heavy subproblem where CoT is error-prone</td></tr>
+      <tr><td><span class="badge bg_">TERMINATE</span></td><td>Return current answer as final output</td><td>Confident answer; further compute not worth it</td></tr>
+    </tbody>
+  </table>
+
+  <p>The reward function jointly optimizes answer quality and computational efficiency:</p>
+
+  <div class="formula">
+    R = <span class="t">r<sub>correct</sub></span> &nbsp;&minus;&nbsp; <span class="t">&lambda;</span> &middot; n<sub>tokens</sub> &nbsp;&minus;&nbsp; <span class="t">&mu;</span> &middot; n<sub>tool_calls</sub>
+    <span class="sub">r<sub>correct</sub> = +1 if correct, 0 otherwise &nbsp;&middot;&nbsp; &lambda; = token cost sensitivity &nbsp;&middot;&nbsp; &mu; = tool call overhead penalty</span>
+  </div>
+
+  <p>The policy is implemented as an instruction-tuned LLM with LoRA adapters. At each reasoning step, the model generates a special action token (e.g., <code>[CONTINUE]</code>, <code>[CALL_TOOL]</code>) before generating content tokens, allowing the RL signal to directly update action selection probabilities. Training uses PPO or GRPO via the HuggingFace <code>trl</code> library. When CALL_TOOL is selected, the model generates a Python code snippet, the executor runs it, and the result is injected back into the trace as an observation token before the next step.</p>
+
+  <p>This design allows the policy to learn empirically: <em>"For GSM8K arithmetic-heavy problems, CALL_TOOL reduces error and total token cost compared to multi-step CoT."</em> The μ penalty prevents trivial solutions where the model spams tool calls for every step.</p>
+</section>
+
+<!-- ARCHITECTURE -->
+<section class="section" id="arch">
+  <div class="sec-hdr"><span class="sec-num">04</span><h2 class="sec-title">Model Architecture &amp; HuggingFace Candidates</h2></div>
+
+  <p>We require an instruction-tuned base model that is: (a) freely available on HuggingFace, (b) fine-tunable with LoRA on a single academic GPU (≤24GB VRAM or free Colab T4), and (c) strong on reasoning and code benchmarks. The four candidates below were evaluated on these criteria.</p>
+
+  <div class="model-grid">
+    <div class="mcard rec">
+      <div class="mname">Qwen2.5-7B-Instruct ⭐</div>
+      <div class="mhf">Qwen/Qwen2.5-7B-Instruct</div>
+      <div class="mtags"><span class="mtag r">Primary choice</span><span class="mtag">7B params</span><span class="mtag">Apache 2.0</span></div>
+      <div class="mnote">Strong math and code. Pretrained on 18T tokens with specialized math/code data. 128K context. Supports tool calling natively. Fits in ~14GB VRAM with 4-bit QLoRA (batch size 4). Best reasoning-to-size ratio for this project.</div>
+    </div>
+    <div class="mcard rec">
+      <div class="mname">Llama-3.1-8B-Instruct ⭐</div>
+      <div class="mhf">meta-llama/Llama-3.1-8B-Instruct</div>
+      <div class="mtags"><span class="mtag r">Primary choice</span><span class="mtag">8B params</span><span class="mtag">Llama 3 License</span></div>
+      <div class="mnote">Strong GSM8K baseline (~78%). Largest open-source ecosystem; extensive LoRA + GRPO community tutorials. 128K context. Colab-compatible with QLoRA + gradient checkpointing. Used as comparison baseline against Qwen.</div>
+    </div>
+    <div class="mcard">
+      <div class="mname">Phi-3-Mini-4K-Instruct</div>
+      <div class="mhf">microsoft/Phi-3-mini-4k-instruct</div>
+      <div class="mtags"><span class="mtag">3.8B params</span><span class="mtag">MIT License</span><span class="mtag">Ablation</span></div>
+      <div class="mnote">3.8B "reasoning-dense" model trained on high-quality synthetic data. Fits on free Colab T4 with ease. Used for rapid prototyping and ablation studies before scaling to 7B runs. Lower absolute accuracy but fastest iteration.</div>
+    </div>
+    <div class="mcard">
+      <div class="mname">Mistral-7B-Instruct-v0.3</div>
+      <div class="mhf">mistralai/Mistral-7B-Instruct-v0.3</div>
+      <div class="mtags"><span class="mtag">7B params</span><span class="mtag">Apache 2.0</span><span class="mtag">Comparison</span></div>
+      <div class="mnote">Solid general-purpose instruct model. Used as a third comparison point to test generalizability of the RL approach across model families. Lower GSM8K performance than Qwen2.5 but useful for cross-model analysis.</div>
+    </div>
+  </div>
+
+  <p style="margin-top:1rem;font-size:13.5px;color:var(--ink3)"><strong>Training setup:</strong> All models fine-tuned via QLoRA (4-bit, rank=16, alpha=32) using HuggingFace <code>trl</code> + <code>peft</code>. Target modules: <code>q_proj, v_proj, k_proj, o_proj</code>. Estimated VRAM: ~14GB for 7B models (batch size 4, single A100 or RTX 3090). Free Colab T4 feasible with gradient checkpointing and batch size 1. RL training via <code>trl.PPOTrainer</code> or <code>trl.GRPOTrainer</code>.</p>
+</section>
+
+<!-- WORKFLOWS -->
+<section class="section" id="workflow">
+  <div class="sec-hdr"><span class="sec-num">05</span><h2 class="sec-title">System Workflows</h2></div>
+  <p>The system operates in two distinct modes. The <strong>training workflow</strong> runs the full RL loop with gradient updates — this is where the policy learns. The <strong>inference workflow</strong> deploys the frozen trained policy on benchmark problems with no weight updates.</p>
+
+  <div class="wf-tabs">
+    <button class="wf-tab active" onclick="wfTab(0)">Training Workflow</button>
+    <button class="wf-tab" onclick="wfTab(1)">Inference / Testing Workflow</button>
+  </div>
+
+  <div class="wf-panel active" id="wf0">
+    <div class="flow">
+      <div class="fn gray">Training dataset<sub>GSM8K train / HumanEval train split</sub></div>
+      <div class="farr">↓</div>
+      <div class="fn purple">LLM + LoRA adapters<sub>Frozen base weights + trainable rank-16 adapters</sub></div>
+      <div class="farr">↓</div>
+      <div class="fn purple">RL policy (PPO / GRPO)<sub>Samples action sequence at each reasoning step</sub></div>
+      <div class="farr">↓</div>
+      <div class="fsplit">
+        <div class="fn teal">CoT trace tokens<sub>continue / verify / sample_alt / terminate</sub></div>
+        <div class="fn coral">Python executor<sub>call_tool → result injected into trace</sub></div>
+      </div>
+      <div class="farr">↓</div>
+      <div class="fn gray">Final answer produced</div>
+      <div class="farr">↓</div>
+      <div class="fsplit">
+        <div class="fn green">Correctness reward<sub>+1 if answer correct, else 0</sub></div>
+        <div class="fn amber">Cost penalty<sub>−λ·tokens − μ·tool_calls</sub></div>
+      </div>
+      <div class="farr">↓</div>
+      <div class="fn blue">Combined reward R → policy gradient update (backprop through LoRA only)</div>
+      <div class="ffb">↻ Gradient flows back to LoRA adapters — repeat for N episodes until convergence</div>
+      <div class="fnote">Base LLM weights remain frozen. Only LoRA adapter matrices are updated via PPO/GRPO.</div>
+    </div>
+  </div>
+
+  <div class="wf-panel" id="wf1">
+    <div class="flow">
+      <div class="fn teal">Trained policy — frozen<sub>LLM + LoRA weights fixed, no gradient updates</sub></div>
+      <div class="farr">↓</div>
+      <div class="fn gray">Test problem input<sub>Unseen GSM8K / HumanEval problem</sub></div>
+      <div class="farr">↓</div>
+      <div class="fn teal">Adaptive action selection (greedy decoding)<sub>Policy picks highest-probability action at each step</sub></div>
+      <div class="farr">↓</div>
+      <div class="fsplit">
+        <div class="fn purple">CoT reasoning trace</div>
+        <div class="fn coral">Tool calls (if triggered)</div>
+      </div>
+      <div class="farr">↓</div>
+      <div class="fn gray">Final answer</div>
+      <div class="farr">↓</div>
+      <div class="fsplit">
+        <div class="fn green">Accuracy metric<sub>Correct answers / total problems</sub></div>
+        <div class="fn amber">Efficiency metric<sub>Tokens per correct answer</sub></div>
+      </div>
+      <div class="farr">↓</div>
+      <div class="fn blue">Compare vs. CoT baseline + self-consistency@8 + no-reasoning baseline</div>
+      <div class="fnote">No gradients computed. All evaluation metrics collected at this stage. Action distribution also logged per problem difficulty tier.</div>
+    </div>
+  </div>
+</section>
+
+<!-- EXPERIMENTAL DESIGN -->
+<section class="section" id="exp">
+  <div class="sec-hdr"><span class="sec-num">06</span><h2 class="sec-title">Experimental Design</h2></div>
+
+  <h3 style="margin-bottom:.75rem">Testable Hypotheses</h3>
+  <div class="hyp-list">
+    <div class="hyp">
+      <div class="hnum">H1</div>
+      <div>
+        <div class="hlabel">Accuracy–efficiency trade-off</div>
+        <div class="htext">An RL-trained adaptive reasoning policy achieves equal or higher accuracy than standard chain-of-thought prompting while using fewer total reasoning tokens.</div>
+        <div class="heval"><strong>Evaluation:</strong> Compare (accuracy, avg. tokens/problem) on GSM8K test set. Hypothesis confirmed if adaptive policy achieves ≥95% of CoT accuracy at ≤80% of CoT token budget.</div>
+      </div>
+    </div>
+    <div class="hyp">
+      <div class="hnum">H2</div>
+      <div>
+        <div class="hlabel">Tool use improves hard problem accuracy</div>
+        <div class="htext">Adding a CALL_TOOL action (Python executor) improves accuracy on arithmetically complex problems compared to a CoT-only policy with no tool access.</div>
+        <div class="heval"><strong>Evaluation:</strong> Subset GSM8K by difficulty tier. Measure accuracy delta between tool-augmented and CoT-only policy on hard problems (≥4 arithmetic operations required).</div>
+      </div>
+    </div>
+    <div class="hyp">
+      <div class="hnum">H3</div>
+      <div>
+        <div class="hlabel">Policy generalizes across domains</div>
+        <div class="htext">A policy trained on GSM8K maintains adaptive compute behavior when evaluated on HumanEval without domain-specific retraining.</div>
+        <div class="heval"><strong>Evaluation:</strong> Compare action frequency distributions on GSM8K vs. HumanEval. Significantly different distributions indicate the policy learned domain-aware reasoning allocation.</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="margin:1.75rem 0 .75rem">Domains &amp; Datasets</h3>
+  <div class="dom-grid">
+    <div class="dcard">
+      <div class="dn">GSM8K — Math Reasoning</div>
+      <div class="ds">Grade-school math word problems requiring sequential arithmetic and algebraic reasoning. Integer answers allow automatic reward computation without a verifier model.</div>
+      <div class="dstat">8,500 train / 1,319 test problems</div>
+    </div>
+    <div class="dcard">
+      <div class="dn">HumanEval — Code Generation</div>
+      <div class="ds">Python function completion from docstrings. Evaluated via unit test execution (binary correct/incorrect). Especially suited for CALL_TOOL since generated code can be directly executed as verification.</div>
+      <div class="dstat">164 problems · pass@1 metric</div>
+    </div>
+  </div>
+
+  <h3 style="margin:1.75rem 0 .75rem">Baselines</h3>
+  <p>We compare against three fixed-compute baselines, all using the same base model without RL fine-tuning: (1) <strong>Standard CoT</strong> — greedy decoding with chain-of-thought prompting; (2) <strong>Self-consistency@8</strong> — 8 sampled chains with majority vote; (3) <strong>Direct answer</strong> — no chain-of-thought at all. This three-point baseline clearly spans the compute spectrum and isolates the contribution of adaptive allocation.</p>
+
+  <h3 style="margin:1.75rem 0 .75rem">Evaluation Metrics</h3>
+  <table class="atbl">
+    <thead><tr><th>Metric</th><th>Definition</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge" style="background:#eaf3de;color:#27500a">Task Accuracy</span></td><td>% of test problems answered correctly</td><td>≥ CoT baseline accuracy</td></tr>
+      <tr><td><span class="badge ba">Avg. Tokens / Problem</span></td><td>Mean reasoning token count across test set</td><td>≤ 80% of CoT token usage</td></tr>
+      <tr><td><span class="badge bp">Compute / Correct Answer</span></td><td>Total tokens ÷ number correct answers</td><td>Lower is better; primary efficiency metric</td></tr>
+      <tr><td><span class="badge bt">Action Distribution</span></td><td>Frequency of each action across problems</td><td>Tool use concentrated on hard problems</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- REFERENCES -->
+<section class="section" id="refs">
+  <div class="sec-hdr"><span class="sec-num">07</span><h2 class="sec-title">References</h2></div>
+  <div class="refs">
+    <div class="ref" data-n="[1]">Yao, S., et al. (2023). <em>Let Me Think! Adaptive Chain-of-Thought Reasoning in Large Language Models.</em> NeurIPS 2023.</div>
+    <div class="ref" data-n="[2]">Schulman, J., et al. (2017). <em>Proximal Policy Optimization Algorithms.</em> arXiv:1707.06347.</div>
+    <div class="ref" data-n="[3]">Shao, Z., et al. (2024). <em>DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.</em> arXiv:2402.03300.</div>
+    <div class="ref" data-n="[4]">Schick, T., et al. (2023). <em>Toolformer: Language Models Can Teach Themselves to Use Tools.</em> NeurIPS 2023.</div>
+    <div class="ref" data-n="[5]">Wang, X., et al. (2023). <em>Self-Consistency Improves Chain of Thought Reasoning in Language Models.</em> ICLR 2023.</div>
+    <div class="ref" data-n="[6]">Hu, E., et al. (2022). <em>LoRA: Low-Rank Adaptation of Large Language Models.</em> ICLR 2022.</div>
+    <div class="ref" data-n="[7]">Wei, J., et al. (2022). <em>Chain-of-Thought Prompting Elicits Reasoning in Large Language Models.</em> NeurIPS 2022.</div>
+    <div class="ref" data-n="[8]">Qwen Team (2024). <em>Qwen2.5 Technical Report.</em> Alibaba Cloud. arXiv:2412.15115.</div>
+    <div class="ref" data-n="[9]">Cobbe, K., et al. (2021). <em>Training Verifiers to Solve Math Word Problems (GSM8K).</em> arXiv:2110.14168.</div>
+    <div class="ref" data-n="[10]">Chen, M., et al. (2021). <em>Evaluating Large Language Models Trained on Code (HumanEval).</em> arXiv:2107.03374.</div>
+  </div>
+</section>
+
+</div>
+</main>
+
+<script>
+function toggleP(el){
+  el.classList.toggle('open');
+  el.querySelector('.ptog').textContent = el.classList.contains('open') ? '▴ Hide comparison' : '▾ Compare with our work';
+}
+function wfTab(i){
+  document.querySelectorAll('.wf-tab').forEach((t,j)=>t.classList.toggle('active',i===j));
+  document.querySelectorAll('.wf-panel').forEach((p,j)=>p.classList.toggle('active',i===j));
+}
+const sections = document.querySelectorAll('.section');
+const links = document.querySelectorAll('#sidebar nav a');
+const prog = document.getElementById('prog');
+window.addEventListener('scroll',()=>{
+  const s=window.scrollY, d=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.transform=`scaleX(${s/d})`;
+  let cur='';
+  sections.forEach(sec=>{ if(window.scrollY>=sec.offsetTop-120) cur=sec.id; });
+  links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+cur));
+});
+</script>
+</body>
+</html>

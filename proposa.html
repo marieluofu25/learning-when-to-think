@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning When to Think — Project Proposal</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1a1814;
+  --ink2: #3d3830;
+  --ink3: #7a7268;
+  --paper: #faf8f4;
+  --paper2: #f2ede4;
+  --paper3: #e8e0d2;
+  --rule: #d4ccc0;
+  --accent: #c4522a;
+  --accent2: #2a6b8a;
+  --accent3: #4a7c3f;
+  --purple: #5e4b8b;
+  --teal: #1d7a6e;
+  --coral: #c4522a;
+  --amber: #b87820;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Source Serif 4', Georgia, serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 10px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.topbar-right { display: flex; gap: 20px; color: var(--ink3); }
+
+/* ── HERO ── */
+.hero {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 70px 60px 60px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 39px,
+    rgba(255,255,255,0.03) 39px,
+    rgba(255,255,255,0.03) 40px
+  );
+  pointer-events: none;
+}
+.hero-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(28px, 5vw, 52px);
+  font-weight: 700;
+  line-height: 1.15;
+  max-width: 780px;
+  margin-bottom: 10px;
+}
+.hero h1 em {
+  font-style: italic;
+  color: #d4a87a;
+}
+.hero-subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: rgba(250,248,244,0.55);
+  margin-top: 8px;
+  letter-spacing: 0.04em;
+}
+.hero-meta {
+  display: flex;
+  gap: 32px;
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 0.5px solid rgba(255,255,255,0.12);
+  flex-wrap: wrap;
+}
+.meta-item { display: flex; flex-direction: column; gap: 4px; }
+.meta-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(250,248,244,0.4);
+}
+.meta-value {
+  font-size: 13px;
+  color: rgba(250,248,244,0.85);
+  font-family: 'Source Serif 4', serif;
+}
+
+/* ── NAV ── */
+.sticky-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--paper2);
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sticky-nav::-webkit-scrollbar { display: none; }
+.nav-item {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 14px 22px;
+  cursor: pointer;
+  color: var(--ink3);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s;
+  user-select: none;
+}
+.nav-item:hover { color: var(--ink); background: var(--paper3); }
+.nav-item.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── MAIN LAYOUT ── */
+.main { max-width: 900px; margin: 0 auto; padding: 0 40px 80px; }
+
+/* ── SECTIONS ── */
+.section {
+  padding: 56px 0 40px;
+  border-bottom: 1px solid var(--rule);
+  display: none;
+}
+.section.active { display: block; }
+
+.section-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.section h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 28px;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+/* ── ABSTRACT CARD ── */
+.abstract-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+@media (max-width: 600px) { .abstract-grid { grid-template-columns: 1fr; } }
+.abstract-card {
+  background: var(--paper2);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 20px;
+  position: relative;
+}
+.abstract-card::before {
+  content: attr(data-q);
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.abstract-card p { font-size: 14px; line-height: 1.65; color: var(--ink2); }
+
+/* ── BODY TEXT ── */
+.prose p { margin-bottom: 18px; color: var(--ink2); font-size: 15.5px; }
+.prose p:last-child { margin-bottom: 0; }
+
+/* ── HIGHLIGHT BOX ── */
+.highlight-box {
+  background: var(--paper2);
+  border-left: 3px solid var(--accent);
+  padding: 16px 20px;
+  margin: 24px 0;
+  border-radius: 0 6px 6px 0;
+  font-size: 14.5px;
+  color: var(--ink2);
+  font-style: italic;
+  line-height: 1.65;
+}
+
+/* ── RELATED WORK TABLE ── */
+.refs-list { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+.ref-item {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 14px;
+  padding: 16px;
+  background: var(--paper2);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  transition: border-color 0.2s;
+}
+.ref-item:hover { border-color: var(--ink3); }
+.ref-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 500;
+  padding-top: 2px;
+}
+.ref-content { }
+.ref-title { font-weight: 600; font-size: 14px; color: var(--ink); margin-bottom: 3px; }
+.ref-authors { font-size: 12px; color: var(--ink3); font-family: 'JetBrains Mono', monospace; margin-bottom: 6px; }
+.ref-note { font-size: 13px; color: var(--ink2); line-height: 1.5; }
+.ref-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  margin-top: 6px;
+  letter-spacing: 0.05em;
+}
+.tag-rl { background: #e8e0f5; color: var(--purple); }
+.tag-llm { background: #dff0ee; color: var(--teal); }
+.tag-tool { background: #fdebd8; color: var(--coral); }
+.tag-cot { background: #fef3dc; color: var(--amber); }
+
+/* ── METHOD: ACTION SPACE TABLE ── */
+.action-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; }
+.action-table th {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  border-bottom: 1px solid var(--rule);
+  padding: 10px 14px;
+  text-align: left;
+  background: var(--paper2);
+}
+.action-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink2);
+  vertical-align: top;
+}
+.action-table tr:last-child td { border-bottom: none; }
+.action-table tr:hover td { background: var(--paper2); }
+.action-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+}
+.pill-teal { background: #dff0ee; color: var(--teal); }
+.pill-purple { background: #e8e0f5; color: var(--purple); }
+.pill-coral { background: #fdebd8; color: var(--coral); border: 1px solid #f0997b; }
+.pill-gray { background: var(--paper3); color: var(--ink3); }
+
+/* ── WORKFLOW TABS ── */
+.workflow-tabs { display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid var(--rule); }
+.wf-tab {
+  padding: 10px 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: var(--ink3);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s;
+}
+.wf-tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+.wf-panel { display: none; padding: 28px 0 8px; }
+.wf-panel.active { display: block; }
+
+/* ── WORKFLOW SVG ── */
+.wf-svg-wrap { width: 100%; overflow-x: auto; }
+.wf-svg-wrap svg { width: 100%; min-width: 560px; }
+
+/* ── FORMULA BOX ── */
+.formula-box {
+  background: var(--ink);
+  color: #e8d5b0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  padding: 20px 28px;
+  border-radius: 6px;
+  margin: 20px 0;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+.formula-box .formula-label {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(232,213,176,0.4);
+  margin-bottom: 8px;
+}
+
+/* ── MODEL CARDS ── */
+.model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-top: 20px; }
+.model-card {
+  background: var(--paper2);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 18px;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.model-card:hover { border-color: var(--accent2); transform: translateY(-2px); }
+.model-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.model-org { font-size: 11px; color: var(--ink3); font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; }
+.model-desc { font-size: 13px; color: var(--ink2); line-height: 1.55; margin-bottom: 10px; }
+.model-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.model-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--paper3);
+  color: var(--ink3);
+}
+.model-tag.rec { background: #dff0ee; color: var(--teal); }
+.model-rec-badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 2px 8px;
+  background: var(--teal);
+  color: #fff;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* ── HYPOTHESES ── */
+.hyp-list { display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
+.hyp-item {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 16px;
+  padding: 18px;
+  background: var(--paper2);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}
+.hyp-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  color: var(--rule);
+  font-weight: 700;
+  line-height: 1;
+}
+.hyp-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 6px;
+}
+.hyp-text { font-size: 14px; color: var(--ink2); line-height: 1.6; }
+
+/* ── EXPERIMENT TABLE ── */
+.exp-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 20px; }
+.exp-table th {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  text-align: left;
+  background: var(--ink);
+  color: var(--paper2);
+}
+.exp-table td { padding: 12px 14px; border-bottom: 1px solid var(--rule); color: var(--ink2); vertical-align: top; }
+.exp-table tr:last-child td { border-bottom: none; }
+.exp-table tr:nth-child(even) td { background: var(--paper2); }
+
+/* ── PRINT BUTTON ── */
+.print-bar {
+  background: var(--paper2);
+  border-top: 1px solid var(--rule);
+  padding: 16px 40px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  position: sticky;
+  bottom: 0;
+}
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 9px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink2);
+}
+.btn:hover { background: var(--paper3); }
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.btn-primary:hover { background: var(--accent); border-color: var(--accent); }
+
+/* Progress indicator */
+.progress-bar {
+  height: 2px;
+  background: var(--paper3);
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* subsection headers */
+.subsection-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-style: italic;
+  color: var(--ink);
+  margin: 28px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+
+hr.divider { border: none; border-top: 1px solid var(--rule); margin: 28px 0; }
+
+@media print {
+  .topbar, .sticky-nav, .print-bar, .progress-bar { display: none !important; }
+  .section { display: block !important; border-bottom: 1px solid #ccc; page-break-inside: avoid; }
+  body { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+<div class="topbar">
+  <span>CS 6966 · Advanced Topics in ML · Spring 2025</span>
+  <div class="topbar-right">
+    <span>University of Utah</span>
+    <span>Project Proposal</span>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-tag">Project Proposal</div>
+  <h1>Learning <em>When</em> to Think:<br>RL for Adaptive Reasoning<br>Computation in LLMs</h1>
+  <div class="hero-subtitle">Reinforcement Learning · Chain-of-Thought · Adaptive Inference · Tool Use</div>
+  <div class="hero-meta">
+    <div class="meta-item">
+      <span class="meta-label">Team Members</span>
+      <span class="meta-value">Ivan Andhika · Hao Ren · Ammon Gleason</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Student IDs</span>
+      <span class="meta-value">u1590903 · u1527543 · u1221580</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Benchmarks</span>
+      <span class="meta-value">GSM8K · HumanEval</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Method</span>
+      <span class="meta-value">PPO / GRPO + LoRA</span>
+    </div>
+  </div>
+</div>
+
+<nav class="sticky-nav" id="nav">
+  <div class="nav-item active" onclick="showSection('abstract')">Abstract</div>
+  <div class="nav-item" onclick="showSection('intro')">Introduction</div>
+  <div class="nav-item" onclick="showSection('related')">Related Work</div>
+  <div class="nav-item" onclick="showSection('method')">Method</div>
+  <div class="nav-item" onclick="showSection('arch')">Architecture</div>
+  <div class="nav-item" onclick="showSection('workflow')">Workflows</div>
+  <div class="nav-item" onclick="showSection('experiments')">Experiments</div>
+</nav>
+
+<div class="main">
+
+<!-- ═══════════════════════════ ABSTRACT ═══════════════════════════ -->
+<div class="section active" id="sec-abstract">
+  <div class="section-eyebrow">§ 0</div>
+  <h2>Abstract</h2>
+  <div class="abstract-grid">
+    <div class="abstract-card" data-q="What is the problem?">
+      <p>Large language models allocate a fixed amount of computation to every input regardless of difficulty. Simple problems receive unnecessary reasoning chains; hard problems may not receive enough exploration. This fixed-compute paradigm wastes resources and limits accuracy.</p>
+    </div>
+    <div class="abstract-card" data-q="Why does this matter?">
+      <p>Test-time compute is a growing bottleneck in deployed LLM systems. As models scale, the ability to adaptively route computational effort — more for hard problems, less for easy ones — directly impacts both cost and accuracy at inference time.</p>
+    </div>
+    <div class="abstract-card" data-q="What is the proposed solution?">
+      <p>We formulate reasoning as a sequential decision-making problem where the model acts as an RL agent choosing among actions: <em>continue</em>, <em>verify</em>, <em>sample alternative</em>, <em>call tool</em>, or <em>terminate</em>. A reward function balancing correctness against computational cost trains the policy via PPO or GRPO with LoRA fine-tuning.</p>
+    </div>
+    <div class="abstract-card" data-q="What experiments do we plan?">
+      <p>We evaluate on GSM8K (mathematical reasoning) and HumanEval (code generation), comparing the adaptive policy against chain-of-thought, self-consistency, and greedy decoding baselines. Primary metrics are task accuracy and reasoning tokens per correct answer.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ INTRODUCTION ═══════════════════════════ -->
+<div class="section" id="sec-intro">
+  <div class="section-eyebrow">§ 1</div>
+  <h2>Introduction</h2>
+  <div class="prose">
+    <p>Modern large language models achieve impressive performance on reasoning tasks through test-time computation techniques such as chain-of-thought (CoT) prompting and self-consistency sampling. However, these approaches suffer from a fundamental inefficiency: they apply a <em>fixed</em> computational budget uniformly across all inputs. A simple arithmetic question receives the same extended chain-of-thought as a graduate-level proof problem.</p>
+
+    <div class="highlight-box">
+      "The optimal amount of reasoning effort is a property of the problem, not of the model — yet current systems have no mechanism to learn this distinction."
+    </div>
+
+    <p>This mismatch has concrete costs. Unnecessary reasoning tokens increase latency and API expense. Conversely, prematurely terminating reasoning on hard problems produces incorrect answers. The question we investigate is: <strong>can reinforcement learning teach an LLM to decide, at each step, how much further to think?</strong></p>
+
+    <p>We extend this question to include <em>tool use</em> as a first-class reasoning action. Rather than forcing the model to compute arithmetic symbolically through language tokens, we allow it to call a Python executor and inject the result back into the reasoning trace. This mirrors how humans naturally switch between mental arithmetic and reaching for a calculator.</p>
+
+    <p>This problem is directly relevant to the course's focus on reinforcement learning for sequential decision making. The reasoning process maps cleanly onto the MDP framework: states are accumulated reasoning traces, actions are reasoning operations, and rewards encode the accuracy–efficiency trade-off. Solving it requires both careful reward shaping and policy optimization — core topics covered in the course.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ RELATED WORK ═══════════════════════════ -->
+<div class="section" id="sec-related">
+  <div class="section-eyebrow">§ 2</div>
+  <h2>Related Work</h2>
+  <div class="prose">
+    <p>Our work sits at the intersection of test-time compute scaling, reinforcement learning for LLMs, and tool-augmented reasoning. We compare and contrast our approach with the following lines of work.</p>
+  </div>
+  <div class="refs-list">
+
+    <div class="ref-item">
+      <div class="ref-num">[1]</div>
+      <div class="ref-content">
+        <div class="ref-title">Chain-of-Thought Prompting Elicits Reasoning in Large Language Models</div>
+        <div class="ref-authors">Wei et al., NeurIPS 2022</div>
+        <div class="ref-note">Establishes CoT as the dominant paradigm for LLM reasoning. Our work treats CoT steps as one action type within a broader action space, rather than a fixed generation strategy. We ask whether a policy can learn <em>when</em> CoT steps are worth generating.</div>
+        <span class="ref-tag tag-cot">Chain-of-Thought</span>
+      </div>
+    </div>
+
+    <div class="ref-item">
+      <div class="ref-num">[2]</div>
+      <div class="ref-content">
+        <div class="ref-title">DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning</div>
+        <div class="ref-authors">DeepSeek-AI, 2025</div>
+        <div class="ref-note">Uses GRPO to train long-horizon reasoning in LLMs, achieving strong results on math and coding without supervised fine-tuning. Closest in spirit to our approach. Key difference: DeepSeek-R1 does not treat reasoning as a discrete action-selection problem, and does not include adaptive termination or tool use as trainable actions.</div>
+        <span class="ref-tag tag-rl">RL for LLMs</span>
+      </div>
+    </div>
+
+    <div class="ref-item">
+      <div class="ref-num">[3]</div>
+      <div class="ref-content">
+        <div class="ref-title">Let's Verify Step by Step</div>
+        <div class="ref-authors">Lightman et al., ICLR 2024</div>
+        <div class="ref-note">Trains process reward models (PRMs) that score individual reasoning steps rather than final answers. This informs our <em>verify</em> action, which internally checks intermediate results. Where PRMs require a separate trained verifier, our model learns self-verification as a policy action.</div>
+        <span class="ref-tag tag-rl">Process Reward</span>
+      </div>
+    </div>
+
+    <div class="ref-item">
+      <div class="ref-num">[4]</div>
+      <div class="ref-content">
+        <div class="ref-title">Toolformer: Language Models Can Teach Themselves to Use Tools</div>
+        <div class="ref-authors">Schick et al., NeurIPS 2023</div>
+        <div class="ref-note">Demonstrates that LLMs can learn to invoke external tools (calculator, search, calendar) via self-supervised training. Our approach differs by learning tool-use <em>policy</em> via RL, allowing the model to discover through reward signals which problem types benefit from tool invocation rather than relying on static demonstration data.</div>
+        <span class="ref-tag tag-tool">Tool Use</span>
+      </div>
+    </div>
+
+    <div class="ref-item">
+      <div class="ref-num">[5]</div>
+      <div class="ref-content">
+        <div class="ref-title">Self-Consistency Improves Chain of Thought Reasoning in Language Models</div>
+        <div class="ref-authors">Wang et al., ICLR 2023</div>
+        <div class="ref-note">Samples multiple CoT paths and takes a majority vote. This is one of our primary baselines. Self-consistency applies fixed over-sampling; our method learns to sample an alternative only when early evidence suggests the current path is failing, reducing wasted computation.</div>
+        <span class="ref-tag tag-cot">Chain-of-Thought</span>
+      </div>
+    </div>
+
+    <div class="ref-item">
+      <div class="ref-num">[6]</div>
+      <div class="ref-content">
+        <div class="ref-title">Proximal Policy Optimization Algorithms</div>
+        <div class="ref-authors">Schulman et al., arXiv 2017</div>
+        <div class="ref-note">Provides the foundational policy optimization algorithm we use. PPO's clipped surrogate objective prevents destructive policy updates — critical when fine-tuning a large pre-trained model where catastrophic forgetting is a risk. We compare PPO against GRPO (Group Relative Policy Optimization) to assess which is more stable for our discrete action space.</div>
+        <span class="ref-tag tag-rl">RL Algorithm</span>
+      </div>
+    </div>
+
+    <div class="ref-item">
+      <div class="ref-num">[7]</div>
+      <div class="ref-content">
+        <div class="ref-title">LoRA: Low-Rank Adaptation of Large Language Models</div>
+        <div class="ref-authors">Hu et al., ICLR 2022</div>
+        <div class="ref-note">Enables fine-tuning of large models by injecting trainable low-rank matrices into transformer layers, keeping the base model frozen. We use LoRA as our fine-tuning strategy, making RL training computationally feasible on free-tier GPU resources available via Hugging Face and Colab.</div>
+        <span class="ref-tag tag-llm">Fine-Tuning</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════ METHOD ═══════════════════════════ -->
+<div class="section" id="sec-method">
+  <div class="section-eyebrow">§ 3</div>
+  <h2>Method</h2>
+
+  <div class="subsection-title">Core Insight</div>
+  <div class="prose">
+    <p>We frame LLM reasoning as a Markov Decision Process. At each step, the model observes its accumulated reasoning trace (state) and selects from a discrete set of reasoning actions. A scalar reward, received at episode termination, encodes the trade-off between getting the right answer and the computational cost incurred to get there.</p>
+    <p>The key insight is that <strong>the reasoning action itself should be a learnable decision</strong>, not a fixed heuristic. Rather than always generating more tokens (CoT) or always stopping early (greedy), the policy learns a context-sensitive allocation strategy — including knowing when to delegate numerical computation to a Python executor rather than approximating it in natural language.</p>
+  </div>
+
+  <div class="subsection-title">MDP Formulation</div>
+  <div class="prose">
+    <p>We define the MDP as follows: the <strong>state</strong> s<sub>t</sub> is the concatenation of the problem prompt and all tokens generated so far (the reasoning trace). The <strong>action space</strong> A contains five discrete actions:</p>
+  </div>
+
+  <table class="action-table">
+    <thead>
+      <tr>
+        <th>Action</th>
+        <th>Description</th>
+        <th>When beneficial</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="action-pill pill-teal">CONTINUE</span></td>
+        <td>Generate the next reasoning step via CoT</td>
+        <td>Problem requires multi-step logical decomposition</td>
+      </tr>
+      <tr>
+        <td><span class="action-pill pill-teal">VERIFY</span></td>
+        <td>Re-check the most recent intermediate result</td>
+        <td>After a computation-heavy step; when confidence is low</td>
+      </tr>
+      <tr>
+        <td><span class="action-pill pill-teal">SAMPLE ALT</span></td>
+        <td>Restart with a different solution path</td>
+        <td>When the current path appears stuck or contradictory</td>
+      </tr>
+      <tr>
+        <td><span class="action-pill pill-coral">CALL TOOL ★</span></td>
+        <td>Generate Python code, run executor, inject result</td>
+        <td>Arithmetic-heavy sub-problems; numerical computation</td>
+      </tr>
+      <tr>
+        <td><span class="action-pill pill-gray">TERMINATE</span></td>
+        <td>Emit the final answer and end the episode</td>
+        <td>When answer confidence is high; simple problems</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="subsection-title">Reward Function</div>
+  <div class="prose">
+    <p>The reward is received only at episode termination (sparse reward). It balances three terms:</p>
+  </div>
+
+  <div class="formula-box">
+    <div class="formula-label">Reward Function</div>
+    R = r<sub>correct</sub> − λ · |tokens| − μ · |tool_calls|
+  </div>
+
+  <div class="prose">
+    <p>Where r<sub>correct</sub> ∈ {0, 1} is the answer correctness indicator, |tokens| is the total reasoning trace length, and |tool_calls| is the number of Python executor invocations. The hyperparameters λ and μ control the accuracy–efficiency trade-off and the tool-use penalty respectively. The policy learns that tool calls are expensive but can be worth it — enabling emergent <em>adaptive tool selection</em> based on problem type.</p>
+  </div>
+
+  <div class="subsection-title">Training Algorithm</div>
+  <div class="prose">
+    <p>We fine-tune the base LLM using LoRA adapters, keeping all original weights frozen. Policy optimization is performed with PPO (primary) and GRPO (ablation). For GRPO, we sample a group of trajectories per problem and use relative rewards within the group to reduce variance without a separate value network. The action-selection head is implemented as a lightweight classifier over the LLM's hidden state at the end of each generation step.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ ARCHITECTURE ═══════════════════════════ -->
+<div class="section" id="sec-arch">
+  <div class="section-eyebrow">§ 4</div>
+  <h2>Architecture &amp; Model Selection</h2>
+
+  <div class="prose">
+    <p>All experiments are designed to run on free-tier GPU hardware (Colab T4, Kaggle P100, or Hugging Face Spaces). We target models in the 1B–7B parameter range that fit in 16GB VRAM with 4-bit quantization and LoRA. Below are the candidate models from Hugging Face, selected based on reasoning capability, license permissiveness, and community adoption.</p>
+  </div>
+
+  <div class="model-grid">
+    <div class="model-card">
+      <span class="model-rec-badge">Recommended</span>
+      <div class="model-name">Qwen2.5-Math-1.5B-Instruct</div>
+      <div class="model-org">Qwen Team · Alibaba</div>
+      <div class="model-desc">Purpose-built for mathematical reasoning. Strong GSM8K baseline out of the box. 1.5B params fits comfortably in Colab T4 even without quantization.</div>
+      <div class="model-tags">
+        <span class="model-tag rec">Math-focused</span>
+        <span class="model-tag">1.5B</span>
+        <span class="model-tag">Apache 2.0</span>
+        <span class="model-tag rec">Free GPU OK</span>
+      </div>
+    </div>
+    <div class="model-card">
+      <span class="model-rec-badge">Recommended</span>
+      <div class="model-name">DeepSeek-R1-Distill-Qwen-1.5B</div>
+      <div class="model-org">DeepSeek-AI</div>
+      <div class="model-desc">Distilled from DeepSeek-R1 — strong reasoning priors baked in from RL training. Ideal base for our RL fine-tuning: the model already knows "how" to reason, we teach it "when."</div>
+      <div class="model-tags">
+        <span class="model-tag rec">RL-pretrained</span>
+        <span class="model-tag">1.5B</span>
+        <span class="model-tag">MIT</span>
+        <span class="model-tag rec">Free GPU OK</span>
+      </div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Llama-3.2-3B-Instruct</div>
+      <div class="model-org">Meta AI</div>
+      <div class="model-desc">Strong general-purpose instruct model. Good for HumanEval (code). Requires 4-bit quantization on T4. Well-documented LoRA + TRL training pipelines available.</div>
+      <div class="model-tags">
+        <span class="model-tag">General</span>
+        <span class="model-tag">3B</span>
+        <span class="model-tag">Llama 3.2 License</span>
+      </div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Phi-3.5-mini-instruct</div>
+      <div class="model-org">Microsoft Research</div>
+      <div class="model-desc">3.8B model with surprisingly strong math and coding performance per parameter. MIT licensed, very active community. Good diversity check against Qwen.</div>
+      <div class="model-tags">
+        <span class="model-tag">Math + Code</span>
+        <span class="model-tag">3.8B</span>
+        <span class="model-tag">MIT</span>
+      </div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">SmolLM2-1.7B-Instruct</div>
+      <div class="model-org">Hugging Face</div>
+      <div class="model-desc">Extremely lightweight. Best for rapid iteration and ablations. Useful as a "minimal baseline" to check whether our RL approach adds value independent of model capacity.</div>
+      <div class="model-tags">
+        <span class="model-tag">Lightweight</span>
+        <span class="model-tag">1.7B</span>
+        <span class="model-tag">Apache 2.0</span>
+      </div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Qwen2.5-Coder-3B-Instruct</div>
+      <div class="model-org">Qwen Team · Alibaba</div>
+      <div class="model-desc">Specialized for code generation. Best candidate for HumanEval experiments. Can generate Python executor calls natively — critical for our tool-use action.</div>
+      <div class="model-tags">
+        <span class="model-tag rec">Code-focused</span>
+        <span class="model-tag">3B</span>
+        <span class="model-tag">Apache 2.0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection-title">Implementation Stack</div>
+  <div class="prose">
+    <p>We use the Hugging Face <code>trl</code> library (PPO/GRPO trainers), <code>peft</code> for LoRA management, and <code>bitsandbytes</code> for 4-bit quantization. The Python executor is implemented as a sandboxed <code>subprocess</code> with a 5-second timeout, returning stdout or a traceback as a string token that is appended to the reasoning trace. Training runs on a single Colab A100 (40GB) or two T4s with model parallelism.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ WORKFLOWS ═══════════════════════════ -->
+<div class="section" id="sec-workflow">
+  <div class="section-eyebrow">§ 5</div>
+  <h2>System Workflows</h2>
+  <div class="prose" style="margin-bottom:20px">
+    <p>The system operates in two distinct phases with different data flows, objectives, and behaviors. Training updates policy weights via gradient descent; inference deploys frozen weights and measures task performance.</p>
+  </div>
+
+  <div class="workflow-tabs">
+    <div class="wf-tab active" onclick="showWF('train')">Training workflow</div>
+    <div class="wf-tab" onclick="showWF('test')">Inference / testing workflow</div>
+  </div>
+
+  <div class="wf-panel active" id="wf-train">
+    <div class="wf-svg-wrap">
+      <svg viewBox="0 0 680 660" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="#7a7268" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+          <marker id="arr-purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="#5e4b8b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+        <!-- Training dataset -->
+        <rect x="210" y="20" width="260" height="52" rx="8" fill="#f2ede4" stroke="#d4ccc0" stroke-width="0.8"/>
+        <text x="340" y="40" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12" fill="#3d3830" font-weight="500">Training dataset</text>
+        <text x="340" y="58" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="10" fill="#7a7268">GSM8K train + HumanEval</text>
+        <line x1="340" y1="72" x2="340" y2="100" stroke="#7a7268" stroke-width="1" marker-end="url(#arr)"/>
+        <!-- LLM + LoRA -->
+        <rect x="190" y="100" width="300" height="52" rx="8" fill="#e8e0f5" stroke="#a89ed4" stroke-width="0.8"/>
+        <text x="340" y="120" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12" fill="#3c2878" font-weight="500">LLM + LoRA adapters</text>
+        <text x="340" y="138" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="10" fill="#5e4b8b">Frozen base · trainable adapters</text>
+        <line x1="340" y1="152" x2="340" y2="180" stroke="#7a7268" stroke-width="1" marker-end="url(#arr)"/>
+        <!-- Policy -->
+        <rect x="170" y="180" width="340" height="52" rx="8" fill="#e8e0f5" stroke="#a89ed4" stroke-width="0.8"/>
+        <text x="340" y="200" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12" fill="#3c2878" font-weight="500">RL policy (PPO / GRPO)</text>
+        <text x="340" y="218" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="10" fill="#5e4b8b">Selects action from extended space</text>
+
+        <!-- Action space border -->
+        <rect x="50" y="256" width="580" height="110" rx="8" fill="none" stroke="#d4ccc0" stroke-width="0.8" stroke-dasharray="5 3"/>
+        <text x="340" y="249" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#7a7268" letter-spacing="0.1em">ACTION SPACE</text>
+
+        <!-- Fan arrows from policy -->
+        <line x1="235" y1="232" x2="108" y2="272" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="280" y1="232" x2="220" y2="272" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="340" y1="232" x2="340" y2="272" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="400" y1="232" x2="464" y2="272" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="455" y1="232" x2="570" y2="272" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+
+        <!-- 5 action boxes -->
+        <rect x="62" y="272" width="90" height="46" rx="6" fill="#dff0ee" stroke="#5dcaa5" stroke-width="0.8"/>
+        <text x="107" y="290" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#085041" font-weight="500">Continue</text>
+        <text x="107" y="306" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#1d7a6e">Extend CoT</text>
+
+        <rect x="172" y="272" width="90" height="46" rx="6" fill="#dff0ee" stroke="#5dcaa5" stroke-width="0.8"/>
+        <text x="217" y="290" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#085041" font-weight="500">Verify</text>
+        <text x="217" y="306" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#1d7a6e">Check step</text>
+
+        <rect x="294" y="272" width="92" height="46" rx="6" fill="#dff0ee" stroke="#5dcaa5" stroke-width="0.8"/>
+        <text x="340" y="290" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#085041" font-weight="500">Sample alt.</text>
+        <text x="340" y="306" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#1d7a6e">New path</text>
+
+        <rect x="416" y="268" width="100" height="54" rx="6" fill="#fdebd8" stroke="#f0997b" stroke-width="1"/>
+        <text x="466" y="288" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#712b13" font-weight="500">Call tool</text>
+        <text x="466" y="302" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#993c1d">Python exec</text>
+        <text x="466" y="315" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="8" fill="#c4522a">★ NEW</text>
+
+        <rect x="528" y="272" width="90" height="46" rx="6" fill="#f2ede4" stroke="#d4ccc0" stroke-width="0.8"/>
+        <text x="573" y="290" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#3d3830" font-weight="500">Terminate</text>
+        <text x="573" y="306" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#7a7268">Return ans.</text>
+
+        <!-- CoT actions → trace -->
+        <line x1="107" y1="318" x2="210" y2="378" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="217" y1="318" x2="250" y2="378" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="340" y1="318" x2="310" y2="378" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="573" y1="318" x2="380" y2="378" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+        <!-- Tool → executor -->
+        <line x1="466" y1="322" x2="506" y2="378" stroke="#c4522a" stroke-width="0.8" marker-end="url(#arr)"/>
+
+        <!-- Reasoning trace -->
+        <rect x="110" y="378" width="280" height="44" rx="8" fill="#f2ede4" stroke="#d4ccc0" stroke-width="0.8"/>
+        <text x="250" y="398" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#3d3830" font-weight="500">Reasoning trace (tokens)</text>
+        <text x="250" y="412" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#7a7268">CoT chain accumulated</text>
+
+        <!-- Python executor -->
+        <rect x="418" y="378" width="200" height="52" rx="8" fill="#fdebd8" stroke="#f0997b" stroke-width="0.8"/>
+        <text x="518" y="398" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#712b13" font-weight="500">Python executor</text>
+        <text x="518" y="414" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#993c1d">Runs code → returns result</text>
+
+        <!-- Executor → trace injection -->
+        <path d="M518 430 L518 450 L390 450 L390 422" fill="none" stroke="#c4522a" stroke-width="0.8" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+        <text x="468" y="446" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#993c1d">result injected</text>
+
+        <!-- Trace + termination → final answer -->
+        <line x1="250" y1="422" x2="280" y2="480" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="418" y1="400" x2="360" y2="480" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+
+        <!-- Final answer -->
+        <rect x="210" y="480" width="260" height="44" rx="8" fill="#f2ede4" stroke="#d4ccc0" stroke-width="0.8"/>
+        <text x="340" y="505" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12" fill="#3d3830" font-weight="500">Final answer</text>
+        <line x1="340" y1="524" x2="340" y2="552" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr)"/>
+
+        <!-- Reward -->
+        <rect x="120" y="552" width="440" height="52" rx="8" fill="#1a1814" stroke="#3d3830" stroke-width="0.8"/>
+        <text x="340" y="572" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12" fill="#e8d5b0" font-weight="500">Reward R</text>
+        <text x="340" y="591" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="10" fill="rgba(232,213,176,0.55)">r_correct − λ·|tokens| − μ·|tool_calls|</text>
+
+        <!-- Feedback loop -->
+        <path d="M120 578 L72 578 L72 206 L170 206" fill="none" stroke="#5e4b8b" stroke-width="1" stroke-dasharray="5 3" marker-end="url(#arr-purple)"/>
+        <text x="52" y="398" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#5e4b8b" transform="rotate(-90,52,398)">policy update</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="wf-panel" id="wf-test">
+    <div class="wf-svg-wrap">
+      <svg viewBox="0 0 680 560" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="#7a7268" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+        <!-- Trained policy frozen -->
+        <rect x="190" y="20" width="300" height="52" rx="8" fill="#dff0ee" stroke="#5dcaa5" stroke-width="0.8"/>
+        <text x="340" y="40" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12" fill="#085041" font-weight="500">Trained policy (frozen)</text>
+        <text x="340" y="57" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="10" fill="#1d7a6e">LLM + LoRA · no gradient updates</text>
+        <line x1="340" y1="72" x2="340" y2="100" stroke="#7a7268" stroke-width="1" marker-end="url(#arr2)"/>
+
+        <!-- Test problem -->
+        <rect x="200" y="100" width="280" height="52" rx="8" fill="#f2ede4" stroke="#d4ccc0" stroke-width="0.8"/>
+        <text x="340" y="120" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12" fill="#3d3830" font-weight="500">Test problem (unseen)</text>
+        <text x="340" y="138" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="10" fill="#7a7268">GSM8K test · HumanEval held-out</text>
+        <line x1="340" y1="152" x2="340" y2="180" stroke="#7a7268" stroke-width="1" marker-end="url(#arr2)"/>
+
+        <!-- Adaptive action (greedy) -->
+        <rect x="170" y="180" width="340" height="52" rx="8" fill="#dff0ee" stroke="#5dcaa5" stroke-width="0.8"/>
+        <text x="340" y="200" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12" fill="#085041" font-weight="500">Adaptive action selection</text>
+        <text x="340" y="218" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="10" fill="#1d7a6e">Greedy policy · no exploration</text>
+        <line x1="340" y1="232" x2="340" y2="260" stroke="#7a7268" stroke-width="1" marker-end="url(#arr2)"/>
+
+        <!-- Reasoning trace -->
+        <rect x="200" y="260" width="280" height="44" rx="8" fill="#f2ede4" stroke="#d4ccc0" stroke-width="0.8"/>
+        <text x="340" y="285" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#3d3830" font-weight="500">Reasoning trace produced</text>
+        <line x1="340" y1="304" x2="340" y2="332" stroke="#7a7268" stroke-width="1" marker-end="url(#arr2)"/>
+
+        <!-- Final answer -->
+        <rect x="220" y="332" width="240" height="44" rx="8" fill="#f2ede4" stroke="#d4ccc0" stroke-width="0.8"/>
+        <text x="340" y="357" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="12" fill="#3d3830" font-weight="500">Final answer</text>
+
+        <!-- Split to two metrics -->
+        <line x1="286" y1="376" x2="190" y2="420" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr2)"/>
+        <line x1="394" y1="376" x2="494" y2="420" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr2)"/>
+
+        <!-- Accuracy -->
+        <rect x="68" y="420" width="244" height="52" rx="8" fill="#eaf3de" stroke="#97c459" stroke-width="0.8"/>
+        <text x="190" y="441" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#27500a" font-weight="500">Task accuracy</text>
+        <text x="190" y="458" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#3b6d11">Correct answers / total problems</text>
+
+        <!-- Efficiency -->
+        <rect x="368" y="420" width="244" height="52" rx="8" fill="#faeeda" stroke="#ef9f27" stroke-width="0.8"/>
+        <text x="490" y="441" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#633806" font-weight="500">Compute efficiency</text>
+        <text x="490" y="458" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="9" fill="#854f0b">Tokens per correct answer</text>
+
+        <!-- Converge to comparison -->
+        <line x1="190" y1="472" x2="270" y2="506" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr2)"/>
+        <line x1="490" y1="472" x2="410" y2="506" stroke="#7a7268" stroke-width="0.8" marker-end="url(#arr2)"/>
+
+        <!-- Compare box -->
+        <rect x="160" y="506" width="360" height="36" rx="8" fill="#e8e0f5" stroke="#a89ed4" stroke-width="0.8"/>
+        <text x="340" y="527" text-anchor="middle" font-family="'JetBrains Mono',monospace" font-size="11" fill="#3c2878" font-weight="500">Compare vs. CoT · Self-Consistency · Greedy</text>
+      </svg>
+    </div>
+    <div class="prose" style="margin-top:16px">
+      <p>At inference time, the trained policy runs deterministically (greedy or low-temperature sampling). No gradient updates occur. We measure task accuracy and token efficiency independently on the held-out test sets, then compare against three baselines: standard chain-of-thought, self-consistency (majority vote over 10 samples), and greedy decoding.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ EXPERIMENTS ═══════════════════════════ -->
+<div class="section" id="sec-experiments">
+  <div class="section-eyebrow">§ 6</div>
+  <h2>Experimental Design</h2>
+
+  <div class="subsection-title">Testable Hypotheses</div>
+  <div class="hyp-list">
+    <div class="hyp-item">
+      <div class="hyp-num">H1</div>
+      <div>
+        <div class="hyp-label">Adaptive Compute</div>
+        <div class="hyp-text">An RL-trained adaptive policy achieves <em>equal or higher accuracy</em> than standard chain-of-thought on GSM8K while using <em>fewer reasoning tokens on average</em>, demonstrating that the policy learns to skip unnecessary computation on simple problems.</div>
+      </div>
+    </div>
+    <div class="hyp-item">
+      <div class="hyp-num">H2</div>
+      <div>
+        <div class="hyp-label">Tool Use Specialization</div>
+        <div class="hyp-text">When the <em>call_tool</em> action is available, the policy learns to invoke the Python executor more frequently on arithmetic-heavy sub-problems and less frequently on symbolic/logical reasoning, without being explicitly supervised to do so — emerging purely from reward signal.</div>
+      </div>
+    </div>
+    <div class="hyp-item">
+      <div class="hyp-num">H3</div>
+      <div>
+        <div class="hyp-label">Efficiency–Accuracy Trade-off</div>
+        <div class="hyp-text">Varying the penalty coefficient λ (token cost) traces a Pareto frontier between task accuracy and compute efficiency, and the adaptive policy dominates the self-consistency baseline on this frontier — i.e., for any target accuracy level, the adaptive policy requires fewer tokens.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection-title">Experiment Plan</div>
+  <table class="exp-table">
+    <thead>
+      <tr>
+        <th>Exp.</th>
+        <th>Hypothesis</th>
+        <th>Dataset</th>
+        <th>Baselines</th>
+        <th>Metric</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>E1</strong></td>
+        <td>H1</td>
+        <td>GSM8K test (1319 problems)</td>
+        <td>CoT, Greedy, Self-Consistency (k=10)</td>
+        <td>Accuracy; avg. tokens/problem</td>
+      </tr>
+      <tr>
+        <td><strong>E2</strong></td>
+        <td>H2</td>
+        <td>GSM8K (arithmetic sub-tasks) + HumanEval (100 problems)</td>
+        <td>Toolformer-style prompting</td>
+        <td>Tool invocation rate per problem type; accuracy with/without tool</td>
+      </tr>
+      <tr>
+        <td><strong>E3</strong></td>
+        <td>H3</td>
+        <td>GSM8K test</td>
+        <td>Self-Consistency (varying k)</td>
+        <td>Pareto curve: accuracy vs. tokens; area under curve</td>
+      </tr>
+      <tr>
+        <td><strong>E4</strong></td>
+        <td>H1, H2</td>
+        <td>HumanEval (code generation)</td>
+        <td>CoT, pass@1 greedy baseline</td>
+        <td>pass@1 accuracy; tokens per passing solution</td>
+      </tr>
+      <tr>
+        <td><strong>Ablation</strong></td>
+        <td>—</td>
+        <td>GSM8K test</td>
+        <td>PPO vs. GRPO; with/without verify action; λ sweep</td>
+        <td>Accuracy + token cost across conditions</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="subsection-title">Evaluation Criteria</div>
+  <div class="prose">
+    <p><strong>Primary:</strong> Task accuracy on held-out test sets (exact match for GSM8K; pass@1 for HumanEval). A result confirms H1 if the adaptive policy achieves within 2 percentage points of the CoT baseline while reducing average token count by ≥ 20%.</p>
+    <p><strong>Secondary:</strong> Compute-per-correct-answer (total tokens consumed divided by number of correct answers). A result confirms H3 if the adaptive policy's Pareto curve dominates self-consistency at the same accuracy operating point.</p>
+    <p><strong>Qualitative:</strong> Action-trace analysis — we will sample 50 problems per benchmark and manually inspect the action sequences chosen by the trained policy to verify that tool-use patterns are semantically sensible (H2).</p>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<div class="print-bar">
+  <button class="btn" onclick="window.print()">Print / Save PDF</button>
+  <button class="btn btn-primary" onclick="showAll()">View all sections</button>
+</div>
+
+<script>
+const sections = ['abstract','intro','related','method','arch','workflow','experiments'];
+const navItems = document.querySelectorAll('.nav-item');
+
+function showSection(id) {
+  sections.forEach(s => {
+    document.getElementById('sec-' + s).classList.toggle('active', s === id);
+  });
+  navItems.forEach(n => {
+    n.classList.toggle('active', n.textContent.trim().toLowerCase().startsWith(id.substring(0,4)));
+  });
+  window.scrollTo({ top: document.querySelector('.sticky-nav').offsetTop - 10, behavior: 'smooth' });
+  updateProgress(id);
+}
+
+function updateProgress(id) {
+  const idx = sections.indexOf(id);
+  const pct = ((idx + 1) / sections.length) * 100;
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+function showWF(which) {
+  document.querySelectorAll('.wf-tab').forEach((t, i) => t.classList.toggle('active', (i === 0 && which === 'train') || (i === 1 && which === 'test')));
+  document.getElementById('wf-train').classList.toggle('active', which === 'train');
+  document.getElementById('wf-test').classList.toggle('active', which === 'test');
+}
+
+function showAll() {
+  sections.forEach(s => document.getElementById('sec-' + s).classList.add('active'));
+  navItems.forEach(n => n.classList.remove('active'));
+  document.getElementById('progress').style.width = '100%';
+}
+
+updateProgress('abstract');
+
+window.addEventListener('scroll', () => {
+  const nav = document.querySelector('.sticky-nav');
+  if (nav) nav.style.boxShadow = window.scrollY > 10 ? '0 2px 12px rgba(0,0,0,0.08)' : 'none';
+});
+</script>
+</body>
+</html>
