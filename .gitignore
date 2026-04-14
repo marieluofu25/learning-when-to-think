@@ -1,5 +1,27 @@
-# Virtual environment
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
 .venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
 
 # Environment variables
 .env
@@ -14,6 +36,7 @@ checkpoints/
 # Evaluation results
 results/
 
+# Local only files
 local_only/
 
 # IDE / editor
@@ -29,3 +52,28 @@ Thumbs.db
 
 # uv cache
 .uv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+checkpoints/
+/data/
+baselines/*
+eval_results/*
+deprecated/*
+results/probe/sweep_results.json
