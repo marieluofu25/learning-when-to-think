@@ -8,22 +8,23 @@
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=4:00:00
-#SBATCH --output=slurm-%j.out
+#SBATCH --output=chpc/results/logs/slurm-eval-%j.out
 
 # --- Modules ---
 module load cuda/12.2
 module load python/3.11
 
 # --- Environment ---
-cd ~/learning-when-to-think
+cd "${CHPC_REPO:-$HOME/learning-when-to-think}"
+mkdir -p chpc/results/logs
 source .venv/bin/activate
 
 export HF_HOME=/scratch/general/vast/$USER/hf_cache
 export PYTHONUNBUFFERED=1
 
 CONFIG=${1:-configs/chpc_grpo.yaml}
-CHECKPOINT=${2:-checkpoints/grpo_chpc/final}
-RESULTS_DIR=${3:-results/eval_chpc}
+CHECKPOINT=${2:-chpc/results/checkpoints/grpo/final}
+RESULTS_DIR=${3:-chpc/results/eval/latest}
 
 echo "=== Evaluation ==="
 echo "Config:     $CONFIG"

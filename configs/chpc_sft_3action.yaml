@@ -1,0 +1,18 @@
+# SFT on messages JSONL from scripts/generate_sft_3action.py
+model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
+sft_data_path: "data/sft_3action_math_train.jsonl"
+output_dir: "chpc/results/sft/3action"
+
+use_qlora: true
+torch_dtype: "bfloat16"
+
+num_epochs: 3
+learning_rate: 2.0e-5
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
+max_seq_length: 4096
+logging_steps: 5
+train_limit: null
+
+lora_rank: 16
+lora_alpha: 32

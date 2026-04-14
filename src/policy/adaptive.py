@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import torch
-from transformers import PreTrainedModel, PreTrainedTokenizerBase
+from transformers import LogitsProcessor, LogitsProcessorList, PreTrainedModel, PreTrainedTokenizerBase
 
 CONTINUE_TOKEN = "<continue>"
 REFINE_TOKEN = "<refine>"
@@ -108,6 +108,43 @@ def _action_control_token_len(
     return _control_token_len(tokenizer, step_ids, REFINE_TOKEN)
 
 
+def _first_action_token_id_candidates(
+    tokenizer: PreTrainedTokenizerBase,
+    *,
+    allow_refine: bool,
+) -> list[int]:
+    """Union of first sub-token ids for each allowed action string (MVP hard mask)."""
+    tokens: list[str] = [CONTINUE_TOKEN, TERMINATE_TOKEN]
+    if allow_refine:
+        tokens.append(REFINE_TOKEN)
+    seen: dict[int, None] = {}
+    for t in tokens:
+        enc = tokenizer.encode(t, add_special_tokens=False)
+        if enc:
+            seen.setdefault(enc[0], None)
+    return list(seen.keys())
+
+
+class _FirstTokenRestrictLogitsProcessor(LogitsProcessor):
+    """Force the first generated token to be one of ``allowed_ids``."""
+
+    def __init__(self, allowed_ids: list[int]):
+        if not allowed_ids:
+            raise ValueError("allowed_ids must be non-empty")
+        self.allowed_ids = list(allowed_ids)
+        self._step = 0
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+        if self._step != 0:
+            self._step += 1
+            return scores
+        self._step += 1
+        mask = torch.full_like(scores, float("-inf"))
+        for tid in self.allowed_ids:
+            mask[:, tid] = scores[:, tid]
+        return mask
+
+
 @torch.inference_mode()
 def adaptive_rollout(
     model: PreTrainedModel,
@@ -119,10 +156,13 @@ def adaptive_rollout(
     allow_refine: bool = True,
     allow_verify: bool | None = None,
     system_prompt: str | None = None,
+    constrain_action_first_token: bool = False,
 ) -> dict:
     """Single rollout: shared by GRPO training and evaluation.
 
     If ``allow_verify`` is set, it overrides ``allow_refine`` (deprecated alias).
+    If ``constrain_action_first_token`` is True, the first token of each generation
+    step is restricted to prefixes of the allowed action strings (forced interface).
 
     Returns:
         text: joined assistant outputs (for reward / #### parsing)
@@ -160,14 +200,26 @@ def adaptive_rollout(
         inputs = tokenizer(prompt_text, return_tensors="pt").to(model.device)
         input_len = inputs["input_ids"].shape[1]
 
-        outputs = model.generate(
-            **inputs,
+        gen_kwargs: dict = dict(
             max_new_tokens=max_tokens_per_step,
             temperature=temperature,
             do_sample=True,
             top_p=0.9,
             pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
         )
+        if constrain_action_first_token:
+            try:
+                allowed = _first_action_token_id_candidates(
+                    tokenizer, allow_refine=allow_refine
+                )
+            except Exception:
+                allowed = []
+            if allowed:
+                gen_kwargs["logits_processor"] = LogitsProcessorList(
+                    [_FirstTokenRestrictLogitsProcessor(allowed)]
+                )
+
+        outputs = model.generate(**inputs, **gen_kwargs)
 
         new_ids = outputs[0][input_len:].tolist()
         if not new_ids:
@@ -229,6 +281,7 @@ def adaptive_generate(
     allow_refine: bool = True,
     allow_verify: bool | None = None,
     system_prompt: str | None = None,
+    constrain_action_first_token: bool = False,
 ) -> dict:
     """Eval-friendly wrapper around adaptive_rollout (slightly lower temperature default)."""
     if allow_verify is not None:
@@ -242,6 +295,7 @@ def adaptive_generate(
         temperature=temperature,
         allow_refine=allow_refine,
         system_prompt=system_prompt,
+        constrain_action_first_token=constrain_action_first_token,
     )
     answer_text = out["text"]
     if TERMINATE_TOKEN in answer_text:

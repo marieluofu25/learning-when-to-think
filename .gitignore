@@ -36,6 +36,10 @@ checkpoints/
 # Evaluation results
 results/
 
+# CHPC cluster outputs (keep directory skeleton)
+chpc/results/**
+!chpc/results/.gitkeep
+
 # Local only files
 local_only/
 

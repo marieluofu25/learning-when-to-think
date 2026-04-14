@@ -181,6 +181,7 @@ def grpo_step(
     w_resp: float = 1.0,
     degrpo: bool = True,
     do_optimizer_step: bool = True,
+    constrain_action_first_token: bool = False,
     **_ignored: object,
 ) -> dict:
     """One GRPO update step over a batch of questions."""
@@ -209,6 +210,7 @@ def grpo_step(
                 max_tokens_per_step=max_tokens_per_step,
                 temperature=1.0,
                 allow_refine=allow_refine,
+                constrain_action_first_token=constrain_action_first_token,
             )
             rollouts.append(rollout)
 
@@ -315,6 +317,7 @@ def train_grpo(
     w_ctrl: float = 2.0,
     w_resp: float = 1.0,
     degrpo: bool = True,
+    constrain_action_first_token: bool = False,
     **_ignored: object,
 ) -> list[dict]:
     """Full GRPO training loop with optional KL regularization and grad accumulation."""
@@ -357,6 +360,7 @@ def train_grpo(
                 w_resp=w_resp,
                 degrpo=degrpo,
                 do_optimizer_step=do_step,
+                constrain_action_first_token=constrain_action_first_token,
             )
 
             epoch_metrics["loss"] += step_metrics["loss"]

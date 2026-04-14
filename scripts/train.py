@@ -115,6 +115,9 @@ def main():
         w_ctrl=float(cfg.get("w_ctrl", 2.0)),
         w_resp=float(cfg.get("w_resp", 1.0)),
         degrpo=bool(cfg.get("degrpo", True)),
+        constrain_action_first_token=bool(
+            cfg.get("constrain_action_first_token", False)
+        ),
     )
 
     (output_dir / "training_history.json").write_text(json.dumps(history, indent=2))

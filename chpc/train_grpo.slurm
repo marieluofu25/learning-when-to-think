@@ -8,22 +8,23 @@
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=8:00:00
-#SBATCH --output=slurm-%j.out
+#SBATCH --output=chpc/results/logs/slurm-train-grpo-%j.out
 
 # --- Modules ---
 module load cuda/12.2
 module load python/3.11
 
 # --- Environment ---
-cd ~/learning-when-to-think
+cd "${CHPC_REPO:-$HOME/learning-when-to-think}"
+mkdir -p chpc/results/logs
 source .venv/bin/activate
 
 export HF_HOME=/scratch/general/vast/$USER/hf_cache
 export PYTHONUNBUFFERED=1
 
-# --- Config (override via: sbatch chpc/train_grpo.slurm --config configs/chpc_debug.yaml) ---
+# --- Config ---
 CONFIG=${1:-configs/chpc_grpo.yaml}
-OUTPUT_DIR=${2:-checkpoints/grpo_chpc}
+OUTPUT_DIR=${2:-chpc/results/checkpoints/grpo}
 
 echo "=== GRPO Training ==="
 echo "Config: $CONFIG"

@@ -6,8 +6,8 @@ eval_subset_size: 16
 
 use_qlora: true
 torch_dtype: "bfloat16"
-checkpoint_path: "checkpoints/grpo_debug/final"
-eval_output_dir: "results/eval_debug"
+checkpoint_path: "chpc/results/checkpoints/debug/final"
+eval_output_dir: "chpc/results/eval/debug"
 
 max_steps: 3
 max_tokens_per_step: 256

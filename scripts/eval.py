@@ -69,6 +69,9 @@ def main():
     gen_kw = {
         "max_steps": cfg.get("max_steps", 5),
         "max_tokens_per_step": cfg.get("max_tokens_per_step", 256),
+        "constrain_action_first_token": bool(
+            cfg.get("constrain_action_first_token", False)
+        ),
     }
 
     all_metrics: dict = {}

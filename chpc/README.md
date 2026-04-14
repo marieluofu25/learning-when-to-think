@@ -1,6 +1,10 @@
 # Running on CHPC (University of Utah)
 
-Copy/paste workflow for **Qwen2.5-Math-7B-Instruct** + **4-bit QLoRA** GRPO training and eval. Adjust `uNID` if needed. Examples use **`--account=cs6966`** and **`--partition=granite-gpu-guest`**; confirm with `mychpc batch` and substitute your real Slurm account if it differs.
+Single operator entrypoint: **`chpc/run_chpc.sh`**. All Slurm stdout and recommended checkpoint/eval paths live under **`chpc/results/`** so you can copy one tree off the cluster:
+
+```bash
+rsync -avz <uNID>@granite.chpc.utah.edu:~/learning-when-to-think/chpc/results/ ./chpc_results_backup/
+```
 
 ## Connect
 
@@ -8,24 +12,46 @@ Copy/paste workflow for **Qwen2.5-Math-7B-Instruct** + **4-bit QLoRA** GRPO trai
 ssh <uNID>@granite.chpc.utah.edu
 ```
 
-Use your assigned login hostname if different.
+## One script: `run_chpc.sh`
 
-## Granite GPU (guest): account + partition + QoS
-
-Examples use **`--account=cs6966`**, **`--partition=granite-gpu-guest`**, and **`--qos=granite-gpu-guest`**. The committed `.slurm` files still default to older Notchpeak names—**always pass overrides on the `sbatch` line** (or edit `#SBATCH` in the scripts).
+From the **repository root** on CHPC (after `git clone`):
 
 ```bash
-mychpc batch
+cd ~/learning-when-to-think
+
+# Optional: match your Slurm allocation (see `mychpc batch`)
+export CHPC_ACCOUNT=cs6966
+export CHPC_PARTITION=granite-gpu-guest
+export CHPC_QOS=granite-gpu-guest
+
+bash chpc/run_chpc.sh train-grpo   [config_yaml] [output_dir]
+bash chpc/run_chpc.sh eval         [config_yaml] [checkpoint_dir] [results_dir]
+bash chpc/run_chpc.sh train-sft    [config_yaml] [output_dir]
+bash chpc/run_chpc.sh train-dpo    [config_yaml]
 ```
 
-Pick the GPU partition and account you are allowed to use, then submit, e.g.:
+### Run the full pipeline (`run-all`)
+
+One command submits **four** Slurm jobs with dependencies:
+
+- **train-grpo** and **train-sft** start **in parallel** (two GPUs if the scheduler assigns them, otherwise they queue).
+- **train-dpo** starts only **after SFT succeeds** (`afterok`).
+- **eval** starts only **after GRPO succeeds**; it uses the GRPO checkpoint (same defaults as `eval` above).
 
 ```bash
-sbatch --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
-  chpc/train_grpo.slurm configs/chpc_debug.yaml checkpoints/grpo_debug
+bash chpc/run_chpc.sh run-all
 ```
 
-If your Slurm account string differs, substitute the exact value from `mychpc batch`.
+Optional environment overrides (all optional):
+
+- Paths/configs: `RUN_ALL_SFT_CFG`, `RUN_ALL_SFT_OUT`, `RUN_ALL_GRPO_CFG`, `RUN_ALL_GRPO_OUT`, `RUN_ALL_DPO_CFG`, `RUN_ALL_EVAL_CFG`, `RUN_ALL_EVAL_CKPT`, `RUN_ALL_EVAL_OUT`
+- Skip steps: `RUN_ALL_SKIP_SFT=1`, `RUN_ALL_SKIP_DPO=1`, `RUN_ALL_SKIP_GRPO=1`, `RUN_ALL_SKIP_EVAL=1`
+
+Ensure `configs/chpc_dpo.yaml` points `sft_checkpoint` at the same directory as `RUN_ALL_SFT_OUT` (default: `chpc/results/sft/3action/final`).
+
+Defaults point at `configs/chpc_grpo.yaml`, `configs/chpc_sft_3action.yaml`, and `configs/chpc_dpo.yaml` with outputs under `chpc/results/`.
+
+`run_chpc.sh` exports **`CHPC_REPO`** to the repo root so `.slurm` scripts `cd` to the correct path even if your home layout differs.
 
 ## Modules
 
@@ -34,102 +60,61 @@ module load cuda/12.2
 module load python/3.11
 ```
 
-If versions differ, run `module avail cuda` and `module avail python`.
-
-## Repo and environment
+## Environment
 
 ```bash
-cd ~
-git clone <your-repo-url> learning-when-to-think
-cd learning-when-to-think
-
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install --upgrade pip
 pip install -e .
 ```
 
-`bitsandbytes` is required for **QLoRA** (`use_qlora: true` in CHPC configs). If install fails on the node, open a CHPC ticket or use a module-provided CUDA stack that matches the wheels.
+`bitsandbytes` is required for **QLoRA** (`use_qlora: true` in CHPC configs).
 
-## Hugging Face cache (use scratch)
-
-Home quotas are small; point the cache at scratch:
+## Hugging Face cache (scratch)
 
 ```bash
 export HF_HOME=/scratch/general/vast/$USER/hf_cache
 mkdir -p "$HF_HOME"
 ```
 
-Gated models (e.g. Llama) need a token (do not commit real tokens to git):
+Gated models need `HF_TOKEN` (do not commit tokens).
 
-```bash
-export HF_TOKEN=hf_...
-```
+## Artifact layout
 
-## Training (SLURM)
+| Path | Contents |
+|------|----------|
+| `chpc/results/logs/` | Slurm `slurm-*.out` files |
+| `chpc/results/checkpoints/grpo/` | GRPO LoRA saves (`final/`) |
+| `chpc/results/eval/latest/` | `eval.py` JSON + `comparison.json` |
+| `chpc/results/sft/3action/` | SFT on 3-action JSONL |
+| `chpc/results/dpo/run1/` | DPO adapter |
 
-Configs:
+## Configs
 
-- `configs/chpc_debug.yaml` — short sanity run (same **Math-7B** backbone, small **MATH-500** subset).
-- `configs/chpc_grpo.yaml` — longer **MATH-500** GRPO run with **ALP** rewards (`beta`, `L_max`) and optional **DeGRPO** (`degrpo`, `w_ctrl`, `w_resp`).
-- `configs/chpc_qwen25_7b_instruct.yaml` — optional **Qwen2.5-7B-Instruct** track for stronger code/general transfer.
+- `configs/chpc_grpo.yaml` — GRPO + QLoRA on MATH-500 subset  
+- `configs/chpc_debug.yaml` — short sanity run  
+- `configs/chpc_sft_3action.yaml` — SFT on `generate_sft_3action` JSONL  
+- `configs/chpc_dpo.yaml` — DPO (**not** DAPO); ensure `sft_checkpoint` exists  
 
-```bash
-# Debug
-sbatch --account=6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
-  chpc/train_grpo.slurm configs/chpc_debug.yaml checkpoints/grpo_debug
-
-# Full training
-sbatch --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
-  chpc/train_grpo.slurm configs/chpc_grpo.yaml checkpoints/grpo_chpc
-```
-
-Positional arguments to the batch script: `[config_path] [output_dir]`.
-
-## Evaluation (SLURM)
-
-Arguments: `[config] [checkpoint] [results_dir]`.
-
-```bash
-sbatch --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
-  chpc/eval.slurm \
-  configs/chpc_grpo.yaml \
-  checkpoints/grpo_chpc/final \
-  results/eval_chpc
-```
-
-HumanEval example (config must set `dataset: humaneval`):
-
-```bash
-sbatch --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
-  chpc/eval.slurm configs/eval_humaneval.yaml checkpoints/grpo_chpc/final results/eval_he
-```
-
-## Monitor
-
-```bash
-squeue -u $USER
-tail -f slurm-<jobid>.out
-```
-
-## Pull results back
-
-```bash
-rsync -avz <uNID>@granite.chpc.utah.edu:~/learning-when-to-think/results/ ./results/
-rsync -avz <uNID>@granite.chpc.utah.edu:~/learning-when-to-think/checkpoints/ ./checkpoints/
-```
-
-## Interactive GPU shell
+## Interactive GPU
 
 ```bash
 srun --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
   --gres=gpu:1 --cpus-per-task=4 --mem=64G --time=01:00:00 --pty bash
 ```
 
-Then activate `.venv`, set `HF_HOME`, and run e.g. `python scripts/train.py --config configs/chpc_debug.yaml --output-dir checkpoints/grpo_debug`.
+Then activate `.venv`, set `HF_HOME`, e.g.:
+
+```bash
+python scripts/train.py --config configs/chpc_debug.yaml --output-dir chpc/results/checkpoints/debug
+```
 
 ## OOM / stability
 
-- Reduce `batch_size`, `num_rollouts_per_problem`, or `max_tokens_per_step` in the YAML.
-- Keep `use_qlora: true` for Math-7B on a single GPU.
-- Increase `#SBATCH --mem` before shrinking the model.
+- Reduce `batch_size`, `num_rollouts_per_problem`, or `max_tokens_per_step` in the YAML.  
+- Keep `use_qlora: true` for Math-7B on a single GPU.  
+- Increase `#SBATCH --mem` in the `.slurm` files if needed.
+
+## Slurm files (advanced)
+
+`chpc/*.slurm` jobs can be submitted manually with the same `sbatch` flags as `run_chpc.sh`; defaults use **notchpeak** names in `#SBATCH` — override with `CHPC_ACCOUNT`, `CHPC_PARTITION`, and `CHPC_QOS` when calling `run_chpc.sh`, or edit the headers once per cluster.

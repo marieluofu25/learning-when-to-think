@@ -6,12 +6,13 @@ eval_subset_size: 200
 
 use_qlora: true
 torch_dtype: "bfloat16"
-checkpoint_path: "checkpoints/grpo_chpc/final"
-eval_output_dir: "results/eval_chpc"
+checkpoint_path: "chpc/results/checkpoints/grpo/final"
+eval_output_dir: "chpc/results/eval/latest"
 
 max_steps: 5
 max_tokens_per_step: 512
 allow_refine: true
+constrain_action_first_token: false
 
 num_rollouts_per_problem: 8
 beta: 0.02

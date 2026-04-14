@@ -16,6 +16,8 @@ eval_output_dir: "results/eval"
 max_steps: 5
 max_tokens_per_step: 256
 allow_refine: true
+# If true, each adaptive step's first token is restricted to action-token prefixes (forced interface).
+constrain_action_first_token: false
 direct_max_tokens: 64
 humaneval_max_tokens: 512
 
