@@ -21,9 +21,9 @@
 #   export CHPC_VENV=/path/to/venv
 # With sbatch --export=ALL, CHPC_VENV is inherited if set before running this script.
 #
-# REPO_ROOT on compute nodes: chpc/*.slurm source slurm_prologue.sh, which resolves
-# the repo from this script's path (parent of chpc/) if SLURM_SUBMIT_DIR / CHPC_REPO
-# are missing or wrong. Always run sbatch from the repository root when possible.
+# Compute nodes: Slurm copies the batch script to spool, so *.slurm sources
+# chpc/slurm_prologue.sh via CHPC_REPO (exported below) or SLURM_SUBMIT_DIR, not
+# dirname(BASH_SOURCE). Prologue then sets REPO_ROOT from pyproject.toml.
 #
 set -euo pipefail
 
