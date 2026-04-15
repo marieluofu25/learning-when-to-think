@@ -4,6 +4,7 @@
 # Usage (from repo root):
 #   bash chpc/run_chpc.sh train-grpo [config] [output_dir]
 #   bash chpc/run_chpc.sh eval [config] [checkpoint] [results_dir]
+#   bash chpc/run_chpc.sh build-sft-data [rollouts_jsonl] [output_jsonl]
 #   bash chpc/run_chpc.sh train-sft [config] [output_dir]
 #   bash chpc/run_chpc.sh train-dpo [config]
 #   bash chpc/run_chpc.sh run-all
@@ -92,8 +93,52 @@ if not p.is_file():
 PY
 }
 
+_resolve_sft_jsonl_path() {
+  # Prints resolved absolute JSONL path from YAML sft_data_path.
+  # Exits 0 if path printed; non-zero on error.
+  local cfg="${1:-configs/chpc_sft_3action.yaml}"
+  python3 - "$REPO_ROOT" "$cfg" <<'PY'
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:
+    print(
+        "lwtt: PyYAML not importable; activate project venv (pip install -e .) and retry.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+root = Path(sys.argv[1])
+cfg_path = Path(sys.argv[2])
+if not cfg_path.is_absolute():
+    cfg_path = root / cfg_path
+if not cfg_path.is_file():
+    print(f"lwtt: SFT config not found: {cfg_path}", file=sys.stderr)
+    sys.exit(1)
+with open(cfg_path, encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+raw = data.get("sft_data_path")
+if not raw:
+    print("lwtt: sft_data_path missing in YAML", file=sys.stderr)
+    sys.exit(1)
+p = Path(raw)
+if not p.is_absolute():
+    p = root / p
+print(str(p))
+PY
+}
+
+_sft_jsonl_exists() {
+  local cfg="${1:-configs/chpc_sft_3action.yaml}"
+  local p
+  p="$(_resolve_sft_jsonl_path "$cfg")" || return 1
+  [[ -f "$p" ]]
+}
+
 usage() {
-  echo "Usage: bash chpc/run_chpc.sh <train-grpo|eval|train-sft|train-dpo|run-all> [args...]" >&2
+  echo "Usage: bash chpc/run_chpc.sh <train-grpo|eval|build-sft-data|train-sft|train-dpo|run-all> [args...]" >&2
   echo "See chpc/README.md" >&2
   exit 1
 }
@@ -120,13 +165,36 @@ case "$CMD" in
       "${2:-chpc/results/checkpoints/grpo/final}" \
       "${3:-chpc/results/eval/latest}"
     ;;
-  train-sft)
-    _require_sft_jsonl_or_exit "${1:-configs/chpc_sft_3action.yaml}"
+  build-sft-data)
+    # Build the JSONL used by SFT (runs on GPU via vLLM rewriter).
     sbatch "${SBATCH_CHDIR[@]}" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
       --export=ALL,CHPC_REPO="$REPO_ROOT" \
-      chpc/train_sft.slurm \
-      "${1:-configs/chpc_sft_3action.yaml}" \
-      "${2:-chpc/results/sft/3action}"
+      chpc/build_sft_3action_data.slurm \
+      "${1:-data/rollouts_grouped_math_Qwen2.5-Math-7B.jsonl}" \
+      "${2:-data/sft_3action_math_train.jsonl}"
+    ;;
+  train-sft)
+    SFT_CFG="${1:-configs/chpc_sft_3action.yaml}"
+    SFT_OUT="${2:-chpc/results/sft/3action}"
+    if _sft_jsonl_exists "$SFT_CFG"; then
+      sbatch "${SBATCH_CHDIR[@]}" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
+        --export=ALL,CHPC_REPO="$REPO_ROOT" \
+        chpc/train_sft.slurm \
+        "$SFT_CFG" \
+        "$SFT_OUT"
+    else
+      echo "SFT JSONL missing for $SFT_CFG; submitting build job first."
+      J_BUILD=$(sbatch --parsable "${SBATCH_CHDIR[@]}" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
+        --export=ALL,CHPC_REPO="$REPO_ROOT" \
+        chpc/build_sft_3action_data.slurm)
+      echo "Submitted build-sft-data job $J_BUILD"
+      sbatch "${SBATCH_CHDIR[@]}" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
+        --dependency=afterok:"$J_BUILD" \
+        --export=ALL,CHPC_REPO="$REPO_ROOT" \
+        chpc/train_sft.slurm \
+        "$SFT_CFG" \
+        "$SFT_OUT"
+    fi
     ;;
   train-dpo)
     sbatch "${SBATCH_CHDIR[@]}" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
@@ -162,9 +230,17 @@ case "$CMD" in
     fi
 
     if [[ "$SKIP_SFT" != "1" ]]; then
-      _require_sft_jsonl_or_exit "$SFT_CFG"
-      J_SFT=$(sbatch --parsable "${SBATCH_BASE[@]}" chpc/train_sft.slurm "$SFT_CFG" "$SFT_OUT")
-      echo "Submitted train-sft job $J_SFT"
+      if _sft_jsonl_exists "$SFT_CFG"; then
+        J_SFT=$(sbatch --parsable "${SBATCH_BASE[@]}" chpc/train_sft.slurm "$SFT_CFG" "$SFT_OUT")
+        echo "Submitted train-sft job $J_SFT"
+      else
+        echo "SFT JSONL missing for $SFT_CFG; submitting build job first."
+        J_BUILD=$(sbatch --parsable "${SBATCH_BASE[@]}" chpc/build_sft_3action_data.slurm)
+        echo "Submitted build-sft-data job $J_BUILD"
+        J_SFT=$(sbatch --parsable "${SBATCH_BASE[@]}" --dependency=afterok:"$J_BUILD" \
+          chpc/train_sft.slurm "$SFT_CFG" "$SFT_OUT")
+        echo "Submitted train-sft job $J_SFT (after build $J_BUILD)"
+      fi
     else
       echo "Skipped train-sft (RUN_ALL_SKIP_SFT=1)"
     fi
