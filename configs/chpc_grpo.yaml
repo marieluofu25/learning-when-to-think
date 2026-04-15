@@ -5,8 +5,8 @@ hf_token: null
 hf_token_file: null
 
 dataset: "math_500"
-# Fast CHPC profile (<~1 hour target): prioritize turnaround over final quality.
-train_subset_size: 32
+# Balanced CHPC profile (~4-6 hour target on H200): enough signal for visible learning.
+train_subset_size: 64
 eval_subset_size: 64
 
 use_qlora: true
@@ -14,12 +14,12 @@ torch_dtype: "bfloat16"
 checkpoint_path: "chpc/results/checkpoints/grpo/final"
 eval_output_dir: "chpc/results/eval/latest"
 
-max_steps: 2
-max_tokens_per_step: 128
+max_steps: 3
+max_tokens_per_step: 512
 allow_refine: false
 constrain_action_first_token: false
 
-num_rollouts_per_problem: 2
+num_rollouts_per_problem: 4
 beta: 0.02
 L_max: null
 degrpo: true
@@ -27,10 +27,10 @@ w_ctrl: 2.0
 w_resp: 1.0
 format_bonus: 0.0
 kl_coef: 0.0
-learning_rate: 1.0e-6
-num_epochs: 1
+learning_rate: 5.0e-6
+num_epochs: 3
 batch_size: 1
-gradient_accumulation_steps: 1
+gradient_accumulation_steps: 4
 lora_rank: 16
 lora_alpha: 32
 

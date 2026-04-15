@@ -85,6 +85,16 @@ bash chpc/run_chpc.sh build-sft-data \
   data/sft_3action_math_train.jsonl
 ```
 
+The default rewriter is **`Qwen/Qwen2.5-7B-Instruct`** (fits typical single-GPU CHPC allocations). If you override `SFT_REWRITER` to a larger model and vLLM hits **CUDA OOM**, lower memory pressure before resubmitting, for example:
+
+```bash
+export SFT_GPU_MEM=0.78
+export SFT_MAX_MODEL_LEN=3072
+export SFT_MAX_NUM_SEQS=16
+export SFT_MAX_TOKENS=2048
+bash chpc/run_chpc.sh build-sft-data
+```
+
 Or just run `train-sft` / `run-all`:
 - if `sft_data_path` exists, SFT submits directly;
 - if `sft_data_path` missing but rollouts exist, it submits `build-sft-data` first;

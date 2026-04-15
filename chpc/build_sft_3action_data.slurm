@@ -7,12 +7,14 @@
 #   output:   data/sft_3action_math_train.jsonl
 #
 # Optional env overrides:
-#   SFT_REWRITER   (default: Qwen/Qwen3-14B)
-#   SFT_TP         (default: 1)
-#   SFT_GPU_MEM    (default: 0.90)
-#   SFT_MAX_TOKENS (default: 4096)
-#   SFT_CLEAN_RATIO(default: 0.6)
-#   SFT_LIMIT      (default: unset)
+#   SFT_REWRITER      (default: Qwen/Qwen2.5-7B-Instruct; override for a larger rewriter if VRAM allows)
+#   SFT_TP            (default: 1; use 2 if you have 2 GPUs for a sharded larger rewriter)
+#   SFT_GPU_MEM       (default: 0.82; lower if you still hit CUDA OOM)
+#   SFT_MAX_MODEL_LEN (default: 4096; vLLM context cap — lower saves KV memory)
+#   SFT_MAX_NUM_SEQS  (default: 24; lower if sampler warmup OOMs on small VRAM)
+#   SFT_MAX_TOKENS    (default: 4096)
+#   SFT_CLEAN_RATIO   (default: 0.6)
+#   SFT_LIMIT         (default: unset)
 #
 #SBATCH --job-name=build-sft-3action-data
 #SBATCH --account=notchpeak-shared-short
@@ -54,9 +56,11 @@ fi
 ROLLOUTS_JSONL="${1:-data/rollouts_grouped_math_Qwen2.5-Math-7B.jsonl}"
 OUTPUT_JSONL="${2:-data/sft_3action_math_train.jsonl}"
 
-SFT_REWRITER="${SFT_REWRITER:-Qwen/Qwen3-14B}"
+SFT_REWRITER="${SFT_REWRITER:-Qwen/Qwen2.5-7B-Instruct}"
 SFT_TP="${SFT_TP:-1}"
-SFT_GPU_MEM="${SFT_GPU_MEM:-0.90}"
+SFT_GPU_MEM="${SFT_GPU_MEM:-0.82}"
+SFT_MAX_MODEL_LEN="${SFT_MAX_MODEL_LEN:-4096}"
+SFT_MAX_NUM_SEQS="${SFT_MAX_NUM_SEQS:-24}"
 SFT_MAX_TOKENS="${SFT_MAX_TOKENS:-4096}"
 SFT_CLEAN_RATIO="${SFT_CLEAN_RATIO:-0.6}"
 SFT_LIMIT="${SFT_LIMIT:-}"
@@ -82,6 +86,8 @@ args=(
   --rewriter "${SFT_REWRITER}"
   --tp "${SFT_TP}"
   --gpu-mem "${SFT_GPU_MEM}"
+  --max-model-len "${SFT_MAX_MODEL_LEN}"
+  --max-num-seqs "${SFT_MAX_NUM_SEQS}"
   --max-tokens "${SFT_MAX_TOKENS}"
   --clean-ratio "${SFT_CLEAN_RATIO}"
 )

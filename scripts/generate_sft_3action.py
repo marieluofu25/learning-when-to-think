@@ -1,18 +1,16 @@
-"""Build SFT warmup dataset by using Qwen3-32B to rewrite rollouts with action tokens.
+"""Build SFT warmup dataset by using an LLM to rewrite rollouts with action tokens.
 
-Instead of regex-based splitting, prompts a stronger model to intelligently place
+Instead of regex-based splitting, prompts a rewriter model to intelligently place
 <continue>, <refine>, and <terminate> tokens at semantic boundaries.
 
 Usage:
-    # Full run
+    # Full run (default rewriter: Qwen2.5-7B-Instruct)
     python -m scripts.generate_sft_3action \
-        --rollouts data/rollouts_grouped_math_Qwen2.5-Math-7B.jsonl \
-        --rewriter Qwen/Qwen3-32B
+        --rollouts data/rollouts_grouped_math_Qwen2.5-Math-7B.jsonl
 
     # Dry run on small subset
     python -m scripts.generate_sft_3action \
-        --rollouts data/rollouts_grouped_math_Qwen2.5-Math-7B.jsonl \
-        --rewriter Qwen/Qwen3-32B --limit 10
+        --rollouts data/rollouts_grouped_math_Qwen2.5-Math-7B.jsonl --limit 10
 
     # Use pre-generated rewrite prompts (skip vLLM)
     python -m scripts.generate_sft_3action --from-rewrites data/rewrites_raw.jsonl
@@ -283,17 +281,32 @@ MATH_SYSTEM_PROMPT = (
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Build SFT warmup dataset via LLM rewriting with Qwen3-32B"
+        description="Build SFT warmup dataset via LLM rewriting (default: Qwen2.5-7B-Instruct)"
     )
     parser.add_argument("--rollouts", default=None,
                         help="Grouped rollouts JSONL")
-    parser.add_argument("--rewriter", default="Qwen/Qwen3-32B",
-                        help="Model for rewriting (default: Qwen3-32B)")
+    parser.add_argument(
+        "--rewriter",
+        default="Qwen/Qwen2.5-7B-Instruct",
+        help="HF model id for rewriting trajectories (default: Qwen/Qwen2.5-7B-Instruct)",
+    )
     parser.add_argument("--output", default="data/sft_3action_math_train.jsonl")
     parser.add_argument("--clean-ratio", type=float, default=0.6)
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--tp", type=int, default=2)
-    parser.add_argument("--gpu-mem", type=float, default=0.90)
+    parser.add_argument("--tp", type=int, default=1)
+    parser.add_argument("--gpu-mem", type=float, default=0.85)
+    parser.add_argument(
+        "--max-model-len",
+        type=int,
+        default=4096,
+        help="vLLM context cap (lower on ~32GB GPUs to avoid OOM with larger rewriters).",
+    )
+    parser.add_argument(
+        "--max-num-seqs",
+        type=int,
+        default=32,
+        help="Cap concurrent sequences for vLLM (lowers sampler/KV warmup memory).",
+    )
     parser.add_argument("--max-tokens", type=int, default=4096)
     parser.add_argument("--gpus", default=None,
                         help="Comma-separated GPU IDs (e.g. '1,2'). Default: auto")
@@ -323,14 +336,19 @@ def main():
     normalize_cuda_visible_devices_for_vllm()
 
     # Load rewriter model
-    print(f"\nLoading rewriter: {args.rewriter}...")
+    print(
+        f"\nLoading rewriter: {args.rewriter} "
+        f"(max_model_len={args.max_model_len}, max_num_seqs={args.max_num_seqs}, "
+        f"gpu_mem={args.gpu_mem}, tp={args.tp})..."
+    )
     llm = LLM(
         model=args.rewriter,
         trust_remote_code=True,
         tensor_parallel_size=args.tp,
-        max_model_len=8192,
+        max_model_len=args.max_model_len,
         dtype="bfloat16",
         gpu_memory_utilization=args.gpu_mem,
+        max_num_seqs=args.max_num_seqs,
     )
 
     params = SamplingParams(
