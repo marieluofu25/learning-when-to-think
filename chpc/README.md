@@ -33,6 +33,7 @@ cd ~/learning-when-to-think
 
 bash chpc/run_chpc.sh train-grpo   [config_yaml] [output_dir]
 bash chpc/run_chpc.sh eval         [config_yaml] [checkpoint_dir] [results_dir]
+bash chpc/run_chpc.sh build-rollouts-data [output_jsonl] [config_yaml]
 bash chpc/run_chpc.sh build-sft-data [rollouts_jsonl] [output_jsonl]
 bash chpc/run_chpc.sh train-sft    [config_yaml] [output_dir]
 bash chpc/run_chpc.sh train-dpo    [config_yaml]
@@ -40,13 +41,14 @@ bash chpc/run_chpc.sh train-dpo    [config_yaml]
 
 ### Run the full pipeline (`run-all`)
 
-One command submits **four** Slurm jobs with dependencies:
+One command submits **four** training/eval jobs with dependencies:
 
 - **train-grpo** and **train-sft** start **in parallel** (two GPUs if the scheduler assigns them, otherwise they queue).
 - **train-dpo** starts only **after SFT succeeds** (`afterok`).
 - **eval** starts only **after GRPO succeeds**; it uses the GRPO checkpoint (same defaults as `eval` above).
--
-- If the SFT JSONL (`sft_data_path` inside `configs/chpc_sft_3action.yaml`) is **missing**, `run-all` will **first submit** a GPU job to build it (`build-sft-data`), then submit `train-sft` with an `afterok` dependency on that build job.
+- If the SFT JSONL (`sft_data_path` inside `configs/chpc_sft_3action.yaml`) is **missing**, `run-all` auto-builds prerequisites:
+  - if rollouts JSONL exists, submit `build-sft-data` then `train-sft` (`afterok`);
+  - if rollouts JSONL is also missing, submit `build-rollouts-data` -> `build-sft-data` -> `train-sft`.
 
 ```bash
 bash chpc/run_chpc.sh run-all
@@ -54,14 +56,26 @@ bash chpc/run_chpc.sh run-all
 
 Optional environment overrides (all optional):
 
-- Paths/configs: `RUN_ALL_SFT_CFG`, `RUN_ALL_SFT_OUT`, `RUN_ALL_GRPO_CFG`, `RUN_ALL_GRPO_OUT`, `RUN_ALL_DPO_CFG`, `RUN_ALL_EVAL_CFG`, `RUN_ALL_EVAL_CKPT`, `RUN_ALL_EVAL_OUT`
+- Paths/configs: `RUN_ALL_ROLLOUTS_CFG`, `RUN_ALL_ROLLOUTS_OUT`, `RUN_ALL_SFT_CFG`, `RUN_ALL_SFT_OUT`, `RUN_ALL_GRPO_CFG`, `RUN_ALL_GRPO_OUT`, `RUN_ALL_DPO_CFG`, `RUN_ALL_EVAL_CFG`, `RUN_ALL_EVAL_CKPT`, `RUN_ALL_EVAL_OUT`
 - Skip steps: `RUN_ALL_SKIP_SFT=1`, `RUN_ALL_SKIP_DPO=1`, `RUN_ALL_SKIP_GRPO=1`, `RUN_ALL_SKIP_EVAL=1`
 
 Ensure `configs/chpc_dpo.yaml` points `sft_checkpoint` at the same directory as `RUN_ALL_SFT_OUT` (default: `chpc/results/sft/3action/final`).
 
 Defaults point at `configs/chpc_grpo.yaml`, `configs/chpc_sft_3action.yaml`, and `configs/chpc_dpo.yaml` with outputs under `chpc/results/`.
 
-### Build SFT JSONL (3-action tokens)
+### Build rollouts + SFT JSONL
+
+Rollouts can be built explicitly:
+
+```bash
+bash chpc/run_chpc.sh build-rollouts-data \
+  data/rollouts_grouped_math_Qwen2.5-Math-7B.jsonl \
+  configs/generate_rollouts_qwen25.yaml
+```
+
+Optional rollouts env overrides passed to `scripts/generate_rollouts_pivot`:
+`ROLLOUT_MODEL`, `ROLLOUT_SUBSET`, `ROLLOUT_NUM_SAMPLES`, `ROLLOUT_MAX_TOKENS`,
+`ROLLOUT_TEMPERATURE`, `ROLLOUT_TP`, `ROLLOUT_GPU_MEM`, `ROLLOUT_SEED`.
 
 SFT training expects a `messages` JSONL at `sft_data_path` (default: `data/sft_3action_math_train.jsonl`). You can build it explicitly:
 
@@ -71,7 +85,10 @@ bash chpc/run_chpc.sh build-sft-data \
   data/sft_3action_math_train.jsonl
 ```
 
-Or just run `train-sft` / `run-all`: if the JSONL is missing, they will **auto-submit** `build-sft-data` first and chain the dependency.
+Or just run `train-sft` / `run-all`:
+- if `sft_data_path` exists, SFT submits directly;
+- if `sft_data_path` missing but rollouts exist, it submits `build-sft-data` first;
+- if both are missing, it submits `build-rollouts-data` then `build-sft-data`, then SFT.
 
 `run_chpc.sh` still exports **`CHPC_REPO`**, but compute jobs **do not rely on it alone**: `chpc/slurm_prologue.sh` resolves **`REPO_ROOT`** from the batch script path (parent of `chpc/`) whenever `SLURM_SUBMIT_DIR` / `CHPC_REPO` point at a directory without `pyproject.toml`. That matches the usual CHPC pattern (`SLURM_SUBMIT_DIR` + fallback). Optional: **`CHPC_SLURM_MODULES`** in `env_local.sh` overrides default `module load` lines. Grace/aarch64 nodes drop the Granite x86 `teaching-llms-errors` venv from `PATH` before `activate` (same idea as your other project).
 
