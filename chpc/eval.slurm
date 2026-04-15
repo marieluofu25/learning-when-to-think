@@ -10,23 +10,16 @@
 #SBATCH --time=4:00:00
 #SBATCH --output=chpc/results/logs/slurm-eval-%j.out
 
-# --- Modules ---
-module load cuda/12.2
-module load python/3.11
-
-# --- Environment ---
-cd "${CHPC_REPO:-$HOME/learning-when-to-think}"
-mkdir -p chpc/results/logs
-source .venv/bin/activate
-
-export HF_HOME=/scratch/general/vast/$USER/hf_cache
-export PYTHONUNBUFFERED=1
+set -euo pipefail
+export CHPC_SLURM_SCRIPT="${BASH_SOURCE[0]}"
+source "$(cd "$(dirname "${CHPC_SLURM_SCRIPT}")" && pwd)/slurm_prologue.sh"
 
 CONFIG=${1:-configs/chpc_grpo.yaml}
 CHECKPOINT=${2:-chpc/results/checkpoints/grpo/final}
 RESULTS_DIR=${3:-chpc/results/eval/latest}
 
 echo "=== Evaluation ==="
+echo "REPO_ROOT:  ${REPO_ROOT}"
 echo "Config:     $CONFIG"
 echo "Checkpoint: $CHECKPOINT"
 echo "Results:    $RESULTS_DIR"

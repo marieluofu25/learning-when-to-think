@@ -19,10 +19,17 @@ From the **repository root** on CHPC (after `git clone`):
 ```bash
 cd ~/learning-when-to-think
 
-# Optional: match your Slurm allocation (see `mychpc batch`)
-export CHPC_ACCOUNT=cs6966
-export CHPC_PARTITION=granite-gpu-guest
-export CHPC_QOS=granite-gpu-guest
+# Optional: save Slurm defaults so you do not retype every session
+# cp chpc/env_local.example.sh chpc/env_local.sh
+# (edit chpc/env_local.sh; it is gitignored — run_chpc.sh sources it when present)
+
+# Or export manually before each run:
+# export CHPC_ACCOUNT=cs6966
+# export CHPC_PARTITION=granite-gpu-guest
+# export CHPC_QOS=granite-gpu-guest
+
+# Optional: override Python venv (default below). Export before sbatch so jobs inherit it.
+# export CHPC_VENV=/path/to/other/venv
 
 bash chpc/run_chpc.sh train-grpo   [config_yaml] [output_dir]
 bash chpc/run_chpc.sh eval         [config_yaml] [checkpoint_dir] [results_dir]
@@ -51,7 +58,7 @@ Ensure `configs/chpc_dpo.yaml` points `sft_checkpoint` at the same directory as 
 
 Defaults point at `configs/chpc_grpo.yaml`, `configs/chpc_sft_3action.yaml`, and `configs/chpc_dpo.yaml` with outputs under `chpc/results/`.
 
-`run_chpc.sh` exports **`CHPC_REPO`** to the repo root so `.slurm` scripts `cd` to the correct path even if your home layout differs.
+`run_chpc.sh` still exports **`CHPC_REPO`**, but compute jobs **do not rely on it alone**: `chpc/slurm_prologue.sh` resolves **`REPO_ROOT`** from the batch script path (parent of `chpc/`) whenever `SLURM_SUBMIT_DIR` / `CHPC_REPO` point at a directory without `pyproject.toml`. That matches the usual CHPC pattern (`SLURM_SUBMIT_DIR` + fallback). Optional: **`CHPC_SLURM_MODULES`** in `env_local.sh` overrides default `module load` lines. Grace/aarch64 nodes drop the Granite x86 `teaching-llms-errors` venv from `PATH` before `activate` (same idea as your other project).
 
 ## Modules
 
@@ -60,15 +67,33 @@ module load cuda/12.2
 module load python/3.11
 ```
 
-## Environment
+## Environment (shared venv)
+
+Slurm scripts and batch jobs use this **default** interpreter (override with `CHPC_VENV`):
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+source ~/venvs/teaching-llms-errors/bin/activate
+```
+
+Equivalent:
+
+```bash
+export CHPC_VENV="${CHPC_VENV:-$HOME/venvs/teaching-llms-errors}"
+source "${CHPC_VENV}/bin/activate"
+```
+
+**Bisa dipakai bareng-bareng?** Ya, **selama** venv itu ada di path yang sama di node compute dan semua anggota tim punya **izin baca + execute** (venv kursus / shared install). Semua job membaca **paket yang sama**; yang tidak dibagi adalah **isi repo + `HF_HOME` + hasil** di home/scratch masing-masing. Jangan `pip install` ke venv shared kecuali tim/dosen setuju (bisa bentrok versi).
+
+Dari root repo, pasang project dalam mode editable **sekali** (jika belum):
+
+```bash
+cd ~/learning-when-to-think
+source ~/venvs/teaching-llms-errors/bin/activate
 pip install --upgrade pip
 pip install -e .
 ```
 
-`bitsandbytes` is required for **QLoRA** (`use_qlora: true` in CHPC configs).
+`bitsandbytes` harus ada di venv itu untuk **QLoRA** (`use_qlora: true` di config CHPC).
 
 ## Hugging Face cache (scratch)
 
@@ -103,7 +128,7 @@ srun --account=cs6966 --partition=granite-gpu-guest --qos=granite-gpu-guest \
   --gres=gpu:1 --cpus-per-task=4 --mem=64G --time=01:00:00 --pty bash
 ```
 
-Then activate `.venv`, set `HF_HOME`, e.g.:
+Then activate the same venv (`source ~/venvs/teaching-llms-errors/bin/activate` or `CHPC_VENV`), set `HF_HOME`, e.g.:
 
 ```bash
 python scripts/train.py --config configs/chpc_debug.yaml --output-dir chpc/results/checkpoints/debug

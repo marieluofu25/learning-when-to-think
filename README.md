@@ -79,7 +79,7 @@ bash chpc/run_chpc.sh train-dpo configs/chpc_dpo.yaml
 bash chpc/run_chpc.sh run-all
 ```
 
-Full notes: [chpc/README.md](chpc/README.md).
+On CHPC, Slurm jobs default to **`source ~/venvs/teaching-llms-errors/bin/activate`** (override with `CHPC_VENV`). Full notes: [chpc/README.md](chpc/README.md).
 
 ## Metrics
 

@@ -17,6 +17,13 @@
 #
 # Override Slurm account/partition (defaults: UU Granite guest examples):
 #   export CHPC_ACCOUNT=cs6966 CHPC_PARTITION=granite-gpu-guest CHPC_QOS=granite-gpu-guest
+# Python venv on compute nodes (default: ~/venvs/teaching-llms-errors); override:
+#   export CHPC_VENV=/path/to/venv
+# With sbatch --export=ALL, CHPC_VENV is inherited if set before running this script.
+#
+# REPO_ROOT on compute nodes: chpc/*.slurm source slurm_prologue.sh, which resolves
+# the repo from this script's path (parent of chpc/) if SLURM_SUBMIT_DIR / CHPC_REPO
+# are missing or wrong. Always run sbatch from the repository root when possible.
 #
 set -euo pipefail
 
@@ -24,6 +31,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 export CHPC_REPO="$REPO_ROOT"
+
+# Optional: per-user Slurm account/partition/qos (and HF_HOME, etc.) without retyping.
+if [[ -f "$SCRIPT_DIR/env_local.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$SCRIPT_DIR/env_local.sh"
+fi
 
 mkdir -p chpc/results/logs chpc/results/checkpoints chpc/results/eval \
   chpc/results/sft chpc/results/dpo
@@ -41,16 +54,19 @@ usage() {
 CMD="${1:-}"
 shift || true
 
+# --chdir: job cwd = repo root (Slurm 20.11+). Drop if your sbatch rejects it.
+SBATCH_CHDIR=(--chdir="$REPO_ROOT")
+
 case "$CMD" in
   train-grpo)
-    sbatch --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
+    sbatch "${SBATCH_CHDIR[@]}" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
       --export=ALL,CHPC_REPO="$REPO_ROOT" \
       chpc/train_grpo.slurm \
       "${1:-configs/chpc_grpo.yaml}" \
       "${2:-chpc/results/checkpoints/grpo}"
     ;;
   eval)
-    sbatch --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
+    sbatch "${SBATCH_CHDIR[@]}" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
       --export=ALL,CHPC_REPO="$REPO_ROOT" \
       chpc/eval.slurm \
       "${1:-configs/chpc_grpo.yaml}" \
@@ -58,14 +74,14 @@ case "$CMD" in
       "${3:-chpc/results/eval/latest}"
     ;;
   train-sft)
-    sbatch --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
+    sbatch "${SBATCH_CHDIR[@]}" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
       --export=ALL,CHPC_REPO="$REPO_ROOT" \
       chpc/train_sft.slurm \
       "${1:-configs/chpc_sft_3action.yaml}" \
       "${2:-chpc/results/sft/3action}"
     ;;
   train-dpo)
-    sbatch --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
+    sbatch "${SBATCH_CHDIR[@]}" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
       --export=ALL,CHPC_REPO="$REPO_ROOT" \
       chpc/train_dpo.slurm \
       "${1:-configs/chpc_dpo.yaml}"
@@ -85,7 +101,7 @@ case "$CMD" in
     SKIP_GRPO="${RUN_ALL_SKIP_GRPO:-0}"
     SKIP_EVAL="${RUN_ALL_SKIP_EVAL:-0}"
 
-    SBATCH_BASE=(--account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS"
+    SBATCH_BASE=(--chdir="$REPO_ROOT" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS"
       --export=ALL,CHPC_REPO="$REPO_ROOT")
 
     J_SFT=""

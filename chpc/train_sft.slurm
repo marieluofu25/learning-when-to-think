@@ -9,20 +9,15 @@
 #SBATCH --time=12:00:00
 #SBATCH --output=chpc/results/logs/slurm-train-sft-%j.out
 
-module load cuda/12.2
-module load python/3.11
-
-cd "${CHPC_REPO:-$HOME/learning-when-to-think}"
-mkdir -p chpc/results/logs
-source .venv/bin/activate
-
-export HF_HOME=/scratch/general/vast/$USER/hf_cache
-export PYTHONUNBUFFERED=1
+set -euo pipefail
+export CHPC_SLURM_SCRIPT="${BASH_SOURCE[0]}"
+source "$(cd "$(dirname "${CHPC_SLURM_SCRIPT}")" && pwd)/slurm_prologue.sh"
 
 CONFIG=${1:-configs/chpc_sft_3action.yaml}
 OUTPUT_DIR=${2:-chpc/results/sft/3action}
 
 echo "=== SFT (3-action JSONL) ==="
+echo "REPO_ROOT: ${REPO_ROOT}"
 echo "Config: $CONFIG"
 echo "Output: $OUTPUT_DIR"
 echo "Node:   $(hostname)"

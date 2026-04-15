@@ -40,6 +40,9 @@ results/
 chpc/results/**
 !chpc/results/.gitkeep
 
+# CHPC per-machine Slurm / env overrides (see chpc/env_local.example.sh)
+chpc/env_local.sh
+
 # Local only files
 local_only/
 
