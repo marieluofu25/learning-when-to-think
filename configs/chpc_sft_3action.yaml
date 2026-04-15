@@ -8,13 +8,13 @@ output_dir: "chpc/results/sft/3action"
 use_qlora: true
 torch_dtype: "bfloat16"
 
-num_epochs: 3
+num_epochs: 1 #3
 learning_rate: 2.0e-5
 per_device_train_batch_size: 1
 gradient_accumulation_steps: 8
-max_seq_length: 4096
+max_seq_length: 2048 #4096
 logging_steps: 5
-train_limit: null
+train_limit: 200
 
 lora_rank: 16
 lora_alpha: 32

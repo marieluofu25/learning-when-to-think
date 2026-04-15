@@ -5,8 +5,8 @@ hf_token_file: null
 sft_checkpoint: "chpc/results/sft/3action/final"
 output_dir: "chpc/results/dpo/run1"
 
-num_problems: 200
-samples_per_problem: 4
-epochs: 2
+num_problems: 100 #200
+samples_per_problem: 2 #4
+epochs: 1 #2
 lr: 5.0e-6
 beta: 0.1
