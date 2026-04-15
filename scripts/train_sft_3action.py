@@ -17,6 +17,7 @@ from trl import SFTConfig, SFTTrainer
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pivot.tokens import ACTION_TOKENS
+from src.train.hf_hub_config import apply_hf_hub_config
 from src.train.model_loading import load_base_causal_lm, load_tokenizer
 
 
@@ -75,11 +76,20 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    apply_hf_hub_config(cfg)
     output_dir = Path(args.output_dir or cfg["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
 
     model_name = cfg["model_name"]
     data_path = Path(cfg["sft_data_path"])
+    if not data_path.is_file():
+        raise FileNotFoundError(
+            f"SFT JSONL missing: {data_path.resolve()}\n"
+            "It is not in git — build on a machine with GPU/API, then copy to CHPC, e.g.:\n"
+            "  python -m scripts.generate_rollouts_pivot --config configs/generate_rollouts_qwen25.yaml\n"
+            "  python -m scripts.generate_sft_3action --rollouts <rollouts.jsonl> --output data/sft_3action_math_train.jsonl\n"
+            "Or set sft_data_path in your YAML to an existing file path."
+        )
     use_qlora = bool(cfg.get("use_qlora", False))
     torch_dtype_name = str(cfg.get("torch_dtype", "bfloat16"))
 

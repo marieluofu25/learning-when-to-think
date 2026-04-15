@@ -1,5 +1,10 @@
 model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
 
+# Hugging Face Hub (gated models / rate limits). If HF_TOKEN is already set in the
+# environment, it wins. Otherwise use hf_token (avoid committing) or hf_token_file.
+hf_token: null
+hf_token_file: null
+
 # Dataset: MATH-500 only (HuggingFaceH4/MATH-500)
 dataset: "math_500"
 train_subset_size: 200

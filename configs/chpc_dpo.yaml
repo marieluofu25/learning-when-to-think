@@ -1,5 +1,7 @@
 # DPO (Direct Preference Optimization) — not DAPO
 model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
+hf_token: null
+hf_token_file: null
 sft_checkpoint: "chpc/results/sft/3action/final"
 output_dir: "chpc/results/dpo/run1"
 

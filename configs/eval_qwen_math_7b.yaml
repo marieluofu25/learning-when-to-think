@@ -1,5 +1,7 @@
 model: Qwen/Qwen2.5-Math-7B-Instruct
 checkpoint: null  # LoRA checkpoint path, or null for base model
+hf_token: null
+hf_token_file: null
 
 # Generation
 temperature: 0.0

@@ -11,6 +11,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.train.dpo import run_dpo
+from src.train.hf_hub_config import apply_hf_hub_config
 
 
 def load_config(path: str) -> dict:
@@ -33,6 +34,7 @@ def main() -> None:
 
     if args.config:
         cfg = load_config(args.config)
+        apply_hf_hub_config(cfg)
         args.sft_checkpoint = cfg.get("sft_checkpoint", args.sft_checkpoint)
         args.model = cfg.get("model_name", args.model)
         args.output_dir = cfg.get("output_dir", args.output_dir)

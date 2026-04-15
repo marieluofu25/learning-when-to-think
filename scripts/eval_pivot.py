@@ -20,6 +20,7 @@ import yaml
 from vllm import LLM, SamplingParams
 
 from src.data.math import extract_boxed_answer, grade_math_answer, load_math500
+from src.train.hf_hub_config import apply_hf_hub_config
 from src.pivot.eval_harness import evaluate, metrics_to_dict, print_eval_report
 from src.pivot.eval_types import RolloutResult
 
@@ -100,6 +101,8 @@ def main():
     for k, v in cli_map.items():
         if v is not None:
             cfg[k] = v
+
+    apply_hf_hub_config(cfg)
 
     # Load problems
     problems = load_math500()

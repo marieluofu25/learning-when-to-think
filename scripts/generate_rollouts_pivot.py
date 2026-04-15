@@ -23,6 +23,7 @@ import yaml
 from vllm import LLM, SamplingParams
 
 from src.data.math import extract_boxed_answer, grade_math_answer, load_math_train
+from src.train.hf_hub_config import apply_hf_hub_config
 
 
 SYSTEM_PROMPT = (
@@ -178,6 +179,8 @@ def main():
     for k, v in cli_map.items():
         if v is not None:
             cfg[k] = v
+
+    apply_hf_hub_config(cfg)
 
     # Generate
     grouped = generate_grouped_rollouts(cfg)

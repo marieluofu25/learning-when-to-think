@@ -20,6 +20,7 @@ from src.eval.evaluate import (
     run_direct_baseline,
     save_results,
 )
+from src.train.hf_hub_config import apply_hf_hub_config
 from src.train.model_loading import load_base_causal_lm, load_tokenizer
 
 
@@ -49,6 +50,7 @@ def main():
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    apply_hf_hub_config(cfg)
     output_dir = Path(args.output_dir or cfg.get("eval_output_dir", "results/eval"))
     checkpoint = args.checkpoint or cfg.get("checkpoint_path", "checkpoints/grpo/final")
 

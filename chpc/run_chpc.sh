@@ -25,6 +25,10 @@
 # chpc/slurm_prologue.sh via CHPC_REPO (exported below) or SLURM_SUBMIT_DIR, not
 # dirname(BASH_SOURCE). Prologue then sets REPO_ROOT from pyproject.toml.
 #
+# train-sft / run-all (SFT branch): refuses sbatch if sft_data_path JSONL is missing,
+# so GPU jobs do not fail after loading weights and DPO does not get
+# DependencyNeverSatisfied. Use RUN_ALL_SKIP_SFT=1 if you only run GRPO+eval.
+#
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,6 +48,49 @@ mkdir -p chpc/results/logs chpc/results/checkpoints chpc/results/eval \
 CHPC_ACCOUNT="${CHPC_ACCOUNT:-cs6966}"
 CHPC_PARTITION="${CHPC_PARTITION:-granite-gpu-guest}"
 CHPC_QOS="${CHPC_QOS:-granite-gpu-guest}"
+
+# Fail fast on login node if SFT training has no JSONL (avoids wasted GPU + broken Slurm deps).
+_require_sft_jsonl_or_exit() {
+  local cfg="${1:-configs/chpc_sft_3action.yaml}"
+  python3 - "$REPO_ROOT" "$cfg" <<'PY'
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:
+    print(
+        "lwtt: PyYAML not importable; activate project venv (pip install -e .) and retry.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+root = Path(sys.argv[1])
+cfg_path = Path(sys.argv[2])
+if not cfg_path.is_absolute():
+    cfg_path = root / cfg_path
+if not cfg_path.is_file():
+    print(f"lwtt: SFT config not found: {cfg_path}", file=sys.stderr)
+    sys.exit(1)
+with open(cfg_path, encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+raw = data.get("sft_data_path")
+if not raw:
+    print("lwtt: sft_data_path missing in YAML", file=sys.stderr)
+    sys.exit(1)
+p = Path(raw)
+if not p.is_absolute():
+    p = root / p
+if not p.is_file():
+    print(f"lwtt: Refusing to submit SFT: JSONL missing:\n  {p}", file=sys.stderr)
+    print(
+        "lwtt: Build or copy data (see scripts/generate_sft_3action.py), "
+        "or run with RUN_ALL_SKIP_SFT=1 if skipping SFT/DPO.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+PY
+}
 
 usage() {
   echo "Usage: bash chpc/run_chpc.sh <train-grpo|eval|train-sft|train-dpo|run-all> [args...]" >&2
@@ -74,6 +121,7 @@ case "$CMD" in
       "${3:-chpc/results/eval/latest}"
     ;;
   train-sft)
+    _require_sft_jsonl_or_exit "${1:-configs/chpc_sft_3action.yaml}"
     sbatch "${SBATCH_CHDIR[@]}" --account="$CHPC_ACCOUNT" --partition="$CHPC_PARTITION" --qos="$CHPC_QOS" \
       --export=ALL,CHPC_REPO="$REPO_ROOT" \
       chpc/train_sft.slurm \
@@ -114,6 +162,7 @@ case "$CMD" in
     fi
 
     if [[ "$SKIP_SFT" != "1" ]]; then
+      _require_sft_jsonl_or_exit "$SFT_CFG"
       J_SFT=$(sbatch --parsable "${SBATCH_BASE[@]}" chpc/train_sft.slurm "$SFT_CFG" "$SFT_OUT")
       echo "Submitted train-sft job $J_SFT"
     else

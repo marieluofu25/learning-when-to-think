@@ -1,5 +1,9 @@
 model_name: "Qwen/Qwen2.5-Math-7B-Instruct"
 
+# Prefer export HF_TOKEN in chpc/env_local.sh. Or: hf_token_file: "$HOME/.cache/huggingface/token"
+hf_token: null
+hf_token_file: null
+
 dataset: "math_500"
 train_subset_size: 2000
 eval_subset_size: 200

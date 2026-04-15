@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.data.math_500 import load_math_500
 from src.eval.evaluate import evaluate_results, run_adaptive_policy, save_results
 from src.train.grpo import setup_lora, train_grpo
+from src.train.hf_hub_config import apply_hf_hub_config
 from src.train.model_loading import load_base_causal_lm, load_tokenizer
 
 
@@ -34,6 +35,7 @@ def main():
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    apply_hf_hub_config(cfg)
     output_dir = Path(args.output_dir)
 
     if args.quick:

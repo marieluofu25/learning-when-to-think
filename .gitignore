@@ -26,6 +26,9 @@ env/
 # Environment variables
 .env
 
+# Optional HF token file path referenced from YAML (do not commit real tokens)
+configs/hf_secrets.yaml
+
 # Python bytecode
 __pycache__/
 *.pyc
