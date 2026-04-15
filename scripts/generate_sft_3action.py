@@ -29,6 +29,7 @@ import numpy as np
 from vllm import LLM, SamplingParams
 
 from src.data.math import extract_boxed_answer, grade_math_answer
+from src.pivot.vllm_cuda_env import normalize_cuda_visible_devices_for_vllm
 
 
 # ── Rewrite prompt ──
@@ -318,6 +319,8 @@ def main():
         import os
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
         print(f"Using GPUs: {args.gpus}")
+
+    normalize_cuda_visible_devices_for_vllm()
 
     # Load rewriter model
     print(f"\nLoading rewriter: {args.rewriter}...")

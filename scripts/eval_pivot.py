@@ -20,6 +20,7 @@ import yaml
 from vllm import LLM, SamplingParams
 
 from src.data.math import extract_boxed_answer, grade_math_answer, load_math500
+from src.pivot.vllm_cuda_env import normalize_cuda_visible_devices_for_vllm
 from src.train.hf_hub_config import apply_hf_hub_config
 from src.pivot.eval_harness import evaluate, metrics_to_dict, print_eval_report
 from src.pivot.eval_types import RolloutResult
@@ -120,6 +121,7 @@ def main():
         dtype="bfloat16",
         gpu_memory_utilization=cfg["gpu_mem"],
     )
+    normalize_cuda_visible_devices_for_vllm()
     if cfg["checkpoint"]:
         from vllm.lora.request import LoRARequest
         llm_kwargs["enable_lora"] = True

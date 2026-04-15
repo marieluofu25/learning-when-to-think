@@ -48,6 +48,11 @@ fi
 source "$_SLURM_PROLOGUE"
 unset _d _chpc_dir _SLURM_PROLOGUE
 
+# vLLM may call int(CUDA_VISIBLE_DEVICES); Slurm sometimes exports a MIG UUID here.
+if [[ "${CUDA_VISIBLE_DEVICES:-}" == MIG-* ]]; then
+  export CUDA_VISIBLE_DEVICES=0
+fi
+
 OUTPUT_JSONL="${1:-data/rollouts_grouped_math_Qwen2.5-Math-7B.jsonl}"
 CONFIG_YAML="${2:-configs/generate_rollouts_qwen25.yaml}"
 

@@ -23,6 +23,7 @@ import yaml
 from vllm import LLM, SamplingParams
 
 from src.data.math import extract_boxed_answer, grade_math_answer, load_math_train
+from src.pivot.vllm_cuda_env import normalize_cuda_visible_devices_for_vllm
 from src.train.hf_hub_config import apply_hf_hub_config
 
 
@@ -72,6 +73,7 @@ def generate_grouped_rollouts(cfg: dict) -> list[dict]:
     print(f"Loaded {len(data)} MATH train problems")
 
     # Load model
+    normalize_cuda_visible_devices_for_vllm()
     llm = LLM(
         model=cfg["model"],
         trust_remote_code=True,
