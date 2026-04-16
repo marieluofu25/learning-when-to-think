@@ -85,16 +85,31 @@ def run_dpo(
     max_prompt_length: int = 256,
 ) -> Path:
     """Generate preference pairs from SFT model, then run DPO training."""
+    sft_path = Path(sft_checkpoint)
+
     print(f"Loading base model: {base_model_name}", flush=True)
-    tokenizer = AutoTokenizer.from_pretrained(base_model_name)
+    tokenizer_source = base_model_name
+    if sft_path.exists():
+        tokenizer_source = str(sft_path)
+        print(f"Loading tokenizer from SFT checkpoint: {sft_path}", flush=True)
+
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_source)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     base_model = AutoModelForCausalLM.from_pretrained(
         base_model_name, torch_dtype=torch.float32, device_map="auto"
     )
+    base_vocab_size = base_model.get_input_embeddings().weight.shape[0]
+    tokenizer_vocab_size = len(tokenizer)
+    if base_vocab_size != tokenizer_vocab_size:
+        print(
+            f"Resizing base embeddings from {base_vocab_size} to {tokenizer_vocab_size} "
+            "to match tokenizer.",
+            flush=True,
+        )
+        base_model.resize_token_embeddings(tokenizer_vocab_size)
 
-    sft_path = Path(sft_checkpoint)
     if sft_path.exists():
         print(f"Loading SFT LoRA from {sft_path}", flush=True)
         sft_model = PeftModel.from_pretrained(base_model, str(sft_path))

@@ -71,6 +71,9 @@ echo "Rollouts:  ${ROLLOUTS_JSONL}"
 echo "Output:    ${OUTPUT_JSONL}"
 echo "Rewriter:  ${SFT_REWRITER}"
 echo "Node:      $(hostname)"
+echo "Account:   ${SLURM_JOB_ACCOUNT:-unknown}"
+echo "Partition: ${SLURM_JOB_PARTITION:-unknown}"
+echo "QOS:       ${SLURM_JOB_QOS:-${SLURM_QOS:-unknown}}"
 echo "Start:     $(date)"
 
 if [[ ! -f "${ROLLOUTS_JSONL}" ]]; then
