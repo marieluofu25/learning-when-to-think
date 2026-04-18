@@ -6,8 +6,8 @@ hf_token_file: null
 
 dataset: "math_500"
 # Balanced CHPC profile (~4-6 hour target on H200): enough signal for visible learning.
-train_subset_size: 64
-eval_subset_size: 64
+train_subset_size: 32
+eval_subset_size: 32
 
 use_qlora: true
 torch_dtype: "bfloat16"
@@ -28,7 +28,7 @@ w_resp: 1.0
 format_bonus: 0.0
 kl_coef: 0.0
 learning_rate: 5.0e-6
-num_epochs: 3
+num_epochs: 2 #3
 batch_size: 1
 gradient_accumulation_steps: 4
 lora_rank: 16
