@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Results — Learning When to Think</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --ink: #1a1814;
+  --ink2: #3d3a35;
+  --ink3: #6b6760;
+  --rule: #d8d4cc;
+  --rule2: #ece9e3;
+  --bg: #faf8f4;
+  --bg2: #f3f0ea;
+  --bg3: #eae6de;
+  --accent: #2d5a3d;
+  --accent2: #4a8c62;
+  --accent3: #c8e6d0;
+  --coral: #b84a2a;
+  --amber: #c18a2a;
+  --slate: #5b6470;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.7;}
+
+.prog{position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);transform-origin:left;transform:scaleX(0);z-index:200;}
+
+header{background:var(--ink);color:white;padding:3.5rem 1.5rem 3rem;position:relative;overflow:hidden;}
+header::before{content:'';position:absolute;top:-60px;right:-60px;width:340px;height:340px;background:#2d5a3d;border-radius:50%;opacity:.1;}
+header::after{content:'';position:absolute;bottom:-80px;left:-40px;width:220px;height:220px;background:#b84a2a;border-radius:50%;opacity:.06;}
+header .wrap{max-width:780px;margin:0 auto;position:relative;z-index:1;}
+header .label{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#9fe1cb;margin-bottom:1rem;}
+header h1{font-family:'DM Serif Display',serif;font-size:clamp(28px,4.5vw,44px);line-height:1.15;margin-bottom:1rem;font-weight:400;}
+header h1 em{font-style:italic;color:#9fe1cb;}
+header .sub{font-size:15px;color:rgba(255,255,255,.75);max-width:580px;margin-bottom:1.5rem;line-height:1.55;}
+header .authors{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem;}
+header .achip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:4px 14px;font-size:12.5px;color:rgba(255,255,255,.85);}
+header .meta{display:flex;flex-wrap:wrap;gap:1.25rem;font-size:12px;color:rgba(255,255,255,.5);}
+header .meta a{color:rgba(255,255,255,.7);text-decoration:underline;text-decoration-color:rgba(255,255,255,.25);}
+
+#toc{position:sticky;top:0;background:var(--bg2);border-bottom:1px solid var(--rule);z-index:50;padding:.6rem 1rem;overflow-x:auto;white-space:nowrap;}
+#toc .inner{max-width:780px;margin:0 auto;display:flex;gap:6px;}
+#toc a{font-size:12px;color:var(--ink3);text-decoration:none;padding:5px 10px;border-radius:5px;font-weight:500;transition:all .15s;flex-shrink:0;}
+#toc a:hover{background:var(--accent3);color:var(--accent);}
+#toc a.active{background:var(--accent);color:white;}
+
+.content{max-width:780px;margin:0 auto;padding:3rem 1.5rem 5rem;}
+.section{margin-bottom:3.75rem;scroll-margin-top:64px;}
+.sec-hdr{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;padding-bottom:.65rem;border-bottom:1.5px solid var(--rule);}
+.sec-num{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--accent);background:var(--accent3);padding:3px 9px;border-radius:4px;letter-spacing:.06em;}
+.sec-title{font-family:'DM Serif Display',serif;font-size:24px;font-weight:400;color:var(--ink);}
+
+p{margin-bottom:.85rem;color:var(--ink2);}
+p:last-child{margin-bottom:0;}
+strong{color:var(--ink);font-weight:600;}
+
+.lead{font-size:16.5px;color:var(--ink2);line-height:1.7;}
+
+.callout{background:var(--bg2);border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:1rem 1.2rem;margin:1.1rem 0;font-size:14.5px;color:var(--ink2);line-height:1.6;}
+.callout.warn{border-left-color:var(--coral);}
+.callout.note{border-left-color:var(--amber);}
+.callout strong{color:var(--ink);}
+
+.action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:1rem 0 .5rem;}
+.act{border:1px solid var(--rule);border-radius:10px;padding:.95rem 1rem;background:var(--bg2);}
+.act .name{font-family:'DM Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+.act.continue .name{color:#085041;}
+.act.refine .name{color:#633806;}
+.act.terminate .name{color:#3c3489;}
+.act .desc{font-size:13px;color:var(--ink3);line-height:1.55;}
+
+.formula{background:var(--bg2);border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:1.1rem 1.25rem;margin:1.1rem 0;font-family:'DM Mono',monospace;font-size:14.5px;color:var(--ink);line-height:1.85;overflow-x:auto;}
+.formula .t{color:var(--accent);font-weight:500;}
+.formula .sub{font-size:12.5px;color:var(--ink3);display:block;margin-top:.5rem;font-family:'Instrument Sans',sans-serif;line-height:1.55;}
+
+.kv-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:1rem 0;}
+.kv{background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:.85rem 1rem;}
+.kv .k{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px;}
+.kv .v{font-size:13.5px;color:var(--ink);line-height:1.55;}
+.kv .v code{font-family:'DM Mono',monospace;font-size:12.5px;background:var(--bg3);padding:1px 6px;border-radius:3px;}
+
+.atbl{width:100%;border-collapse:collapse;margin:1rem 0;font-size:13.5px;}
+.atbl th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:8px 10px;background:var(--bg3);border-bottom:1px solid var(--rule);}
+.atbl td{padding:8px 10px;border-bottom:1px solid var(--rule2);vertical-align:top;color:var(--ink2);}
+.atbl tr:last-child td{border-bottom:none;}
+.atbl td.num{font-family:'DM Mono',monospace;font-size:13px;color:var(--ink);}
+.atbl tr.dim td{color:var(--ink3);}
+.atbl tr.win td{background:#f4faf6;}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;font-family:'DM Mono',monospace;}
+.bp-good{background:#e1f5ee;color:#085041;}
+.bp-bad{background:#f1efe8;color:#6b6760;}
+.bp-warn{background:#faece7;color:#712b13;}
+.bp-info{background:#eeedfe;color:#3c3489;}
+.bp-amber{background:#faeeda;color:#633806;}
+
+.spear-row{display:flex;flex-wrap:wrap;gap:8px;margin:.6rem 0 1rem;}
+.spear{font-family:'DM Mono',monospace;font-size:12px;background:var(--bg2);border:1px solid var(--rule);padding:5px 11px;border-radius:6px;color:var(--ink2);}
+.spear b{color:var(--accent);font-weight:600;}
+
+.chart-card{background:var(--bg2);border:1px solid var(--rule);border-radius:12px;padding:1.1rem 1.2rem 1.25rem;margin:1.1rem 0;}
+.chart-card .title{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:.25rem;}
+.chart-card .cap{font-size:12px;color:var(--ink3);margin-bottom:.85rem;line-height:1.5;}
+.chart-wrap{position:relative;height:320px;width:100%;}
+.chart-wrap.tall{height:360px;}
+
+.subhead{font-family:'DM Serif Display',serif;font-size:17px;font-weight:400;color:var(--ink);margin:1.5rem 0 .5rem;}
+
+.verdict{display:flex;gap:10px;align-items:flex-start;margin:1rem 0;padding:.85rem 1rem;border-radius:10px;background:var(--bg2);border:1px solid var(--rule);}
+.verdict .tag{font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:4px;flex-shrink:0;margin-top:1px;}
+.verdict.partial .tag{background:#faeeda;color:#633806;}
+.verdict.weak .tag{background:#faece7;color:#712b13;}
+.verdict.fail .tag{background:#f1efe8;color:#6b6760;}
+.verdict.win .tag{background:#e1f5ee;color:#085041;}
+.verdict .body{font-size:13.5px;color:var(--ink2);line-height:1.6;}
+.verdict .body b{color:var(--ink);}
+
+ul.tight{margin:.5rem 0 1rem 1.25rem;}
+ul.tight li{font-size:14px;color:var(--ink2);line-height:1.65;margin-bottom:.4rem;}
+ul.tight li b{color:var(--ink);}
+
+.score-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:1rem 0;}
+.score{background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:.95rem 1rem;text-align:center;}
+.score .h{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--ink3);margin-bottom:5px;}
+.score .v{font-family:'DM Serif Display',serif;font-size:22px;color:var(--ink);margin-bottom:3px;}
+.score .v.partial{color:#633806;}
+.score .v.weak{color:#712b13;}
+.score .v.win{color:#085041;}
+.score .desc{font-size:12px;color:var(--ink3);line-height:1.45;}
+
+footer{padding:2rem 1.5rem 3rem;border-top:1px solid var(--rule);background:var(--bg2);}
+footer .wrap{max-width:780px;margin:0 auto;font-size:12.5px;color:var(--ink3);}
+footer a{color:var(--accent);text-decoration:none;}
+footer a:hover{text-decoration:underline;}
+
+@media(max-width:720px){
+  header{padding:2.5rem 1rem 2rem;}
+  .content{padding:2rem 1rem 3rem;}
+  .action-grid,.kv-grid,.score-row{grid-template-columns:1fr;}
+  .chart-wrap{height:280px;}
+  header h1{font-size:26px;}
+  .sec-title{font-size:20px;}
+  .atbl{font-size:12.5px;}
+  .atbl th,.atbl td{padding:6px 7px;}
+}
+</style>
+</head>
+<body>
+<div class="prog" id="prog"></div>
+
+<header>
+  <div class="wrap">
+    <div class="label">Results Report &middot; Deep Reinforcement Learning &middot; Spring 2026</div>
+    <h1>Learning When to Think: <em>does the model learn to spend less on easy and more on hard?</em></h1>
+    <p class="sub">An RL policy with three actions (continue, refine, terminate) trained on top of Qwen2.5-Math-7B-Instruct with LoRA, GRPO, ALP reward, and DeGRPO weighting. Tested on MATH-500.</p>
+    <div class="authors">
+      <span class="achip">Ivan Andhika &middot; u1590903</span>
+      <span class="achip">Hao Ren &middot; u1527543</span>
+      <span class="achip">Ammon Gleason &middot; u1221580</span>
+    </div>
+    <div class="meta">
+      <span>University of Utah &middot; CS 6955</span>
+      <span><a href="Final proposal - Learning When to Think (2).pdf">Final proposal (PDF)</a></span>
+      <span><a href="docs/results_h1_h3.md">Raw results (md)</a></span>
+    </div>
+  </div>
+</header>
+
+<nav id="toc">
+  <div class="inner">
+    <a href="#problem">1. Problem</a>
+    <a href="#idea">2. Idea</a>
+    <a href="#reward">3. Reward</a>
+    <a href="#train">4. Training</a>
+    <a href="#setup">5. Setup</a>
+    <a href="#h1">6. H1</a>
+    <a href="#h2">7. H2</a>
+    <a href="#h3">8. H3</a>
+    <a href="#conclusion">9. Conclusion</a>
+    <a href="#limits">10. Limits</a>
+  </div>
+</nav>
+
+<main class="content">
+
+<!-- 1. PROBLEM -->
+<section class="section" id="problem">
+  <div class="sec-hdr"><span class="sec-num">01</span><h2 class="sec-title">The problem</h2></div>
+  <p class="lead">Large language models think for the same amount of time on every question. They use the same number of tokens for "What is 2 + 2?" and for a hard olympiad problem.</p>
+  <p>This is a waste. Easy questions get too many tokens. Hard questions sometimes stop too early and get the wrong answer. We want a model that <strong>chooses how much to think</strong> based on the question.</p>
+  <div class="callout"><strong>Goal in one line.</strong> Train a small policy on top of an LLM so it can decide: keep thinking, fix a mistake, or stop and answer.</div>
+</section>
+
+<!-- 2. IDEA -->
+<section class="section" id="idea">
+  <div class="sec-hdr"><span class="sec-num">02</span><h2 class="sec-title">The idea: three actions</h2></div>
+  <p>We treat reasoning as a small game (an MDP). At every step the model picks one of three actions:</p>
+  <div class="action-grid">
+    <div class="act continue">
+      <div class="name">continue</div>
+      <div class="desc">Keep writing the next reasoning step. Use this when the answer is not ready yet.</div>
+    </div>
+    <div class="act refine">
+      <div class="name">refine</div>
+      <div class="desc">Stop, look back, and fix the last steps. Use this when something feels wrong.</div>
+    </div>
+    <div class="act terminate">
+      <div class="name">terminate</div>
+      <div class="desc">Stop reasoning and write the final answer. Use this when the answer is clear.</div>
+    </div>
+  </div>
+  <p>The model emits a small <em>control token</em> for the action, then writes the matching text. This makes the action choice trainable with normal RL.</p>
+</section>
+
+<!-- 3. REWARD -->
+<section class="section" id="reward">
+  <div class="sec-hdr"><span class="sec-num">03</span><h2 class="sec-title">Reward: ALP (Adaptive Length Penalty)</h2></div>
+  <p>The reward gives a point for a correct answer and takes points away for a long answer. The penalty is bigger when the question is easy.</p>
+  <div class="formula">
+    R<sub>k</sub> = <span class="t">r<sub>acc,k</sub></span> &nbsp;&minus;&nbsp; <span class="t">&beta;</span> &middot; max(0, <span class="t">SR(q)</span>) &middot; n<sub>tokens,k</sub> / L<sub>max</sub>
+    <span class="sub"><b>r<sub>acc,k</sub></b>: 1 if the answer is correct, else 0. <b>SR(q)</b>: how often the group solves question q (a proxy for "easy"). <b>n<sub>tokens,k</sub></b>: how long the answer is. <b>&beta;, L<sub>max</sub></b>: fixed scale factors.</span>
+  </div>
+  <p>In plain words: <strong>easy + long = big penalty</strong>. <strong>Hard + long = small penalty</strong>. So the model learns to spend tokens where they help.</p>
+</section>
+
+<!-- 4. TRAINING -->
+<section class="section" id="train">
+  <div class="sec-hdr"><span class="sec-num">04</span><h2 class="sec-title">Training: GRPO + DeGRPO + LoRA</h2></div>
+  <p>We use <strong>GRPO</strong> (Group Relative Policy Optimization). For each question we sample a small group of answers and use the group as a baseline. No separate critic model needed.</p>
+  <p><strong>DeGRPO</strong> is our small change. The control tokens (action choices) get a higher gradient weight than the normal text tokens. This stops the action signal from being washed out by the long text.</p>
+  <div class="formula">
+    L = &minus;A<sub>k</sub> ( <span class="t">w<sub>ctrl</sub></span> &middot; log p<sub>ctrl</sub> + <span class="t">w<sub>resp</sub></span> &middot; log p<sub>resp</sub> ) + <span class="t">&lambda;<sub>KL</sub></span> &middot; KL
+    <span class="sub">Default weights: w<sub>ctrl</sub> = 2.0, w<sub>resp</sub> = 1.0. KL term keeps the policy close to the base model.</span>
+  </div>
+  <div class="kv-grid">
+    <div class="kv"><div class="k">Base model</div><div class="v">Qwen2.5-Math-7B-Instruct</div></div>
+    <div class="kv"><div class="k">Adapter</div><div class="v">LoRA, <code>r=16</code>, <code>&alpha;=32</code> on attention + MLP</div></div>
+    <div class="kv"><div class="k">Algorithm</div><div class="v">GRPO + ALP reward + DeGRPO weighting</div></div>
+    <div class="kv"><div class="k">Train data</div><div class="v">MATH-500 train subset, <code>n=32</code>, 2 epochs</div></div>
+  </div>
+  <div class="callout note"><strong>Important note for H3.</strong> The training config used <code>allow_refine: false</code>, so the policy only really learned <code>continue</code> and <code>terminate</code>. The <code>refine</code> action can still appear at decode time, but the model was not trained to use it well.</div>
+</section>
+
+<!-- 5. SETUP -->
+<section class="section" id="setup">
+  <div class="sec-hdr"><span class="sec-num">05</span><h2 class="sec-title">Experimental setup</h2></div>
+  <p>We test on <strong>MATH-500</strong>, a hard high-school competition math benchmark with 5 difficulty levels (1 = easiest, 5 = hardest) and several subjects.</p>
+  <ul class="tight">
+    <li><b>Eval size:</b> <code>n = 100</code> per checkpoint (CHPC jobs are capped at 2 hours).</li>
+    <li><b>Resume:</b> per-problem JSONL, so a killed job restarts from the last solved item.</li>
+    <li><b>Methods compared:</b> CoT baseline, Direct (no reasoning), Adaptive DeGRPO with and without <code>refine</code>, Adaptive Vanilla GRPO with and without <code>refine</code>.</li>
+    <li><b>Pipeline:</b> see <a href="docs/results_h1_h3.md" style="color:var(--accent)">docs/results_h1_h3.md</a> for full commands.</li>
+  </ul>
+  <div class="callout warn"><strong>Statistical caveat.</strong> At <code>n=100</code> the 95% CI near accuracy 0.5 is about &plusmn;10 points. So differences smaller than that are not statistically clear.</div>
+</section>
+
+<!-- 6. H1 -->
+<section class="section" id="h1">
+  <div class="sec-hdr"><span class="sec-num">06</span><h2 class="sec-title">H1 &mdash; Better accuracy/efficiency trade-off</h2></div>
+  <p class="lead"><strong>Hypothesis.</strong> The adaptive policy with ALP + DeGRPO should give a better Pareto frontier (more accuracy per token) than CoT and vanilla GRPO.</p>
+
+  <div class="chart-card">
+    <div class="title">Accuracy vs avg tokens per problem (MATH-500, n=100)</div>
+    <div class="cap">Top-left is best (high accuracy, few tokens). Filled green dots = non-dominated (on the Pareto frontier). Hollow grey dots = dominated by some other point.</div>
+    <div class="chart-wrap"><canvas id="chartH1"></canvas></div>
+  </div>
+
+  <table class="atbl">
+    <thead><tr><th>Method</th><th>Correct / total</th><th>Accuracy (95% CI)</th><th>Avg tokens</th><th>Cost / correct</th><th>Pareto</th></tr></thead>
+    <tbody>
+      <tr><td>CoT baseline</td><td class="num">53 / 100</td><td class="num">0.530 [0.43, 0.62]</td><td class="num">404.4</td><td class="num">763.0</td><td><span class="badge bp-good">non-dominated</span></td></tr>
+      <tr><td>Direct baseline</td><td class="num">0 / 100</td><td class="num">0.000 [0.00, 0.04]</td><td class="num">64.0</td><td class="num">6400.0</td><td><span class="badge bp-good">non-dominated</span></td></tr>
+      <tr class="dim"><td>Adaptive DeGRPO (+refine)</td><td class="num">46 / 100</td><td class="num">0.460 [0.37, 0.56]</td><td class="num">754.4</td><td class="num">1640.1</td><td><span class="badge bp-bad">dominated</span></td></tr>
+      <tr class="win"><td><b>Adaptive DeGRPO (&minus;refine)</b></td><td class="num">59 / 100</td><td class="num">0.590 [0.49, 0.68]</td><td class="num">613.1</td><td class="num">1039.2</td><td><span class="badge bp-good">non-dominated</span></td></tr>
+      <tr class="dim"><td>Adaptive Vanilla (+refine)</td><td class="num">41 / 100</td><td class="num">0.410 [0.32, 0.51]</td><td class="num">767.3</td><td class="num">1871.4</td><td><span class="badge bp-bad">dominated</span></td></tr>
+      <tr class="dim"><td>Adaptive Vanilla (&minus;refine)</td><td class="num">50 / 100</td><td class="num">0.500 [0.40, 0.60]</td><td class="num">594.1</td><td class="num">1188.3</td><td><span class="badge bp-bad">dominated</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="verdict partial">
+    <span class="tag">Partially supported</span>
+    <div class="body"><b>The best adaptive run is DeGRPO without refine</b> (0.59 accuracy, 613 tokens). It is the only adaptive point on the Pareto frontier and beats vanilla GRPO without refine (0.50). But its CI overlaps with CoT (0.53), so the gain over CoT is not statistically clean at <code>n=100</code>. All <code>+refine</code> rows are dominated.</div>
+  </div>
+</section>
+
+<!-- 7. H2 -->
+<section class="section" id="h2">
+  <div class="sec-hdr"><span class="sec-num">07</span><h2 class="sec-title">H2 &mdash; More compute on harder problems</h2></div>
+  <p class="lead"><strong>Hypothesis.</strong> A learned policy should give more tokens (and more steps) to harder problems.</p>
+
+  <div class="spear-row">
+    <span class="spear">+refine: Spearman(level, tokens) = <b>0.360</b></span>
+    <span class="spear">+refine: Spearman(level, steps) = <b>0.138</b></span>
+    <span class="spear">&minus;refine: Spearman(level, tokens) = <b>0.288</b></span>
+    <span class="spear">&minus;refine: Spearman(level, steps) = <b>0.149</b></span>
+  </div>
+
+  <div class="chart-card">
+    <div class="title">Mean tokens per problem by difficulty level</div>
+    <div class="cap">Tokens grow from level 1 (easy) to level 5 (hard) for both decode modes. Higher = more thinking budget on that level.</div>
+    <div class="chart-wrap"><canvas id="chartH2tokens"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="title">Mean steps per problem by difficulty level</div>
+    <div class="cap">Step count is almost flat (~2.7&ndash;3.0). The policy thinks longer in tokens but not in extra steps.</div>
+    <div class="chart-wrap"><canvas id="chartH2steps"></canvas></div>
+  </div>
+
+  <h3 class="subhead">Per-level numbers (Adaptive DeGRPO)</h3>
+  <table class="atbl">
+    <thead><tr><th>Level</th><th>n</th><th>+refine: tokens</th><th>+refine: steps</th><th>+refine: acc</th><th>&minus;refine: tokens</th><th>&minus;refine: steps</th><th>&minus;refine: acc</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="num">11</td><td class="num">594.4</td><td class="num">2.64</td><td class="num">0.545</td><td class="num">513.3</td><td class="num">2.82</td><td class="num">0.909</td></tr>
+      <tr><td>2</td><td class="num">25</td><td class="num">601.7</td><td class="num">2.76</td><td class="num">0.720</td><td class="num">560.0</td><td class="num">2.88</td><td class="num">0.760</td></tr>
+      <tr><td>3</td><td class="num">19</td><td class="num">672.8</td><td class="num">2.74</td><td class="num">0.474</td><td class="num">570.2</td><td class="num">2.74</td><td class="num">0.789</td></tr>
+      <tr><td>4</td><td class="num">22</td><td class="num">794.2</td><td class="num">2.77</td><td class="num">0.273</td><td class="num">566.2</td><td class="num">2.95</td><td class="num">0.500</td></tr>
+      <tr><td>5</td><td class="num">23</td><td class="num">1026.5</td><td class="num">2.87</td><td class="num">0.304</td><td class="num">798.9</td><td class="num">2.96</td><td class="num">0.174</td></tr>
+    </tbody>
+  </table>
+
+  <div class="verdict weak">
+    <span class="tag">Weakly supported</span>
+    <div class="body"><b>Yes for tokens, no for steps.</b> Mean tokens rise clearly with difficulty (594 &rarr; 1027 for +refine). But step count is almost flat. So the model spends more <i>inside</i> a step on hard problems, not more steps. Spearman is positive but only moderate (0.29&ndash;0.36).</div>
+  </div>
+</section>
+
+<!-- 8. H3 -->
+<section class="section" id="h3">
+  <div class="sec-hdr"><span class="sec-num">08</span><h2 class="sec-title">H3 &mdash; Action mix changes with difficulty</h2></div>
+  <p class="lead"><strong>Hypothesis.</strong> Easy problems should get more <code>terminate</code>. Hard problems should get more <code>continue</code> and <code>refine</code>.</p>
+  <p>Note: the policy was trained with <code>allow_refine: false</code>. So the cleanest test is the <code>+refine</code> decode (refine token allowed at test time) and the <code>&minus;refine</code> decode (refine forced off).</p>
+
+  <div class="chart-card">
+    <div class="title">Action share by level &mdash; +refine decode</div>
+    <div class="cap">Each bar adds up to 100%. Lower terminate share on harder levels would support H3.</div>
+    <div class="chart-wrap"><canvas id="chartH3withRefine"></canvas></div>
+  </div>
+
+  <table class="atbl">
+    <thead><tr><th>Level</th><th>n</th><th>frac continue</th><th>frac refine</th><th>frac terminate</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="num">11</td><td class="num">0.862</td><td class="num">0.000</td><td class="num">0.138</td></tr>
+      <tr><td>2</td><td class="num">25</td><td class="num">0.841</td><td class="num">0.029</td><td class="num">0.130</td></tr>
+      <tr><td>3</td><td class="num">19</td><td class="num">0.769</td><td class="num">0.096</td><td class="num">0.135</td></tr>
+      <tr><td>4</td><td class="num">22</td><td class="num">0.836</td><td class="num">0.066</td><td class="num">0.098</td></tr>
+      <tr><td>5</td><td class="num">23</td><td class="num">0.879</td><td class="num">0.030</td><td class="num">0.091</td></tr>
+    </tbody>
+  </table>
+
+  <div class="chart-card">
+    <div class="title">Action share by level &mdash; &minus;refine decode (refine forced off)</div>
+    <div class="cap">Two-action regime: continue vs terminate. Refine is always 0 here.</div>
+    <div class="chart-wrap"><canvas id="chartH3noRefine"></canvas></div>
+  </div>
+
+  <table class="atbl">
+    <thead><tr><th>Level</th><th>n</th><th>frac continue</th><th>frac refine</th><th>frac terminate</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="num">11</td><td class="num">0.839</td><td class="num">0.000</td><td class="num">0.161</td></tr>
+      <tr><td>2</td><td class="num">25</td><td class="num">0.903</td><td class="num">0.000</td><td class="num">0.097</td></tr>
+      <tr><td>3</td><td class="num">19</td><td class="num">0.885</td><td class="num">0.000</td><td class="num">0.115</td></tr>
+      <tr><td>4</td><td class="num">22</td><td class="num">0.985</td><td class="num">0.000</td><td class="num">0.015</td></tr>
+      <tr><td>5</td><td class="num">23</td><td class="num">0.912</td><td class="num">0.000</td><td class="num">0.088</td></tr>
+    </tbody>
+  </table>
+
+  <div class="verdict partial">
+    <span class="tag">Partially supported</span>
+    <div class="body"><b>Terminate share is higher on level 1 than on level 5</b> in both decodes (0.138 vs 0.091 with refine; 0.161 vs 0.088 without). That matches H3 in spirit. But the trend is noisy (level 4 is an outlier with very few terminates) and refine is rarely picked because the model was never trained to use it. A clean 3-action H3 needs a retrain with <code>allow_refine: true</code>.</div>
+  </div>
+</section>
+
+<!-- 9. CONCLUSION -->
+<section class="section" id="conclusion">
+  <div class="sec-hdr"><span class="sec-num">09</span><h2 class="sec-title">What worked, what did not</h2></div>
+
+  <div class="score-row">
+    <div class="score">
+      <div class="h">H1 &middot; Pareto</div>
+      <div class="v partial">Partial</div>
+      <div class="desc">DeGRPO &minus;refine is non-dominated. CIs vs CoT overlap.</div>
+    </div>
+    <div class="score">
+      <div class="h">H2 &middot; Adaptive compute</div>
+      <div class="v weak">Weak</div>
+      <div class="desc">Tokens grow with level. Steps are flat.</div>
+    </div>
+    <div class="score">
+      <div class="h">H3 &middot; Action mix</div>
+      <div class="v partial">Partial</div>
+      <div class="desc">More terminate on easy. Refine never really learned.</div>
+    </div>
+  </div>
+
+  <p><strong>What worked.</strong> DeGRPO without refine is the best adaptive setting. It beats vanilla GRPO without refine at almost the same token cost (0.59 vs 0.50 accuracy, ~613 vs ~594 tokens). The model also spends more tokens on harder levels, which is the main behavior we wanted.</p>
+
+  <p><strong>What did not work.</strong> The <code>refine</code> action did not help. All <code>+refine</code> runs are dominated. The main reason is simple: training had <code>allow_refine: false</code>, so the model was never rewarded for using refine well. Step count also stays flat, so "thinking longer" here means "longer single steps", not "more steps".</p>
+
+  <p><strong>Headline answer.</strong> The pipeline does push the policy in the right direction (more tokens on hard, more terminate on easy, DeGRPO &gt; vanilla). But the size of the win is small and not statistically clean at <code>n=100</code>. We see a <i>signal</i>, not a <i>proof</i>.</p>
+</section>
+
+<!-- 10. LIMITS -->
+<section class="section" id="limits">
+  <div class="sec-hdr"><span class="sec-num">10</span><h2 class="sec-title">Limitations and next steps</h2></div>
+
+  <h3 class="subhead">Limits in this report</h3>
+  <ul class="tight">
+    <li><b>Train set is tiny (n=32):</b> training accuracy went 0.59 &rarr; 0.49 between epochs, which hints at instability.</li>
+    <li><b>Eval set is small (n=100):</b> 95% CI near accuracy 0.5 is about &plusmn;10 points. Most differences are inside this gap.</li>
+    <li><b>Reduced action space at train time:</b> <code>allow_refine: false</code>, so H3 is really a 2-action test (continue vs terminate).</li>
+    <li><b>Vanilla GRPO uses the same small data,</b> so the H1 ablation inherits the same noise.</li>
+    <li><b>No external PRM, no AIME, no full MATH, no Pass@k baseline.</b> All out of scope for this proposal.</li>
+  </ul>
+
+  <h3 class="subhead">Next steps if we had more time</h3>
+  <ul class="tight">
+    <li>Retrain with <code>allow_refine: true</code> and a real refine reward signal so H3 is a true 3-action test.</li>
+    <li>Scale train data from <code>n=32</code> to several hundred MATH problems and run more epochs.</li>
+    <li>Push eval to <code>n=500</code> (full MATH-500) so CIs shrink to roughly &plusmn;4 points.</li>
+    <li>Add self-consistency Pass@k as a stronger compute baseline for H1.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    Source data: <a href="docs/results_h1_h3.md">docs/results_h1_h3.md</a> &middot; Code: <a href="scripts/analyze_h1_pareto.py">analyze_h1_pareto.py</a>, <a href="scripts/analyze_h2_h3.py">analyze_h2_h3.py</a> &middot; CHPC eval logs under <code>chpc/results/eval/</code>.
+  </div>
+</footer>
+
+<script>
+// ---------- Scroll progress + active TOC ----------
+const sections = document.querySelectorAll('.section');
+const tocLinks = document.querySelectorAll('#toc a');
+const prog = document.getElementById('prog');
+function onScroll(){
+  const s = window.scrollY;
+  const d = document.documentElement.scrollHeight - window.innerHeight;
+  prog.style.transform = `scaleX(${Math.min(1, s / Math.max(1,d))})`;
+  let cur = '';
+  sections.forEach(sec => { if (window.scrollY >= sec.offsetTop - 120) cur = sec.id; });
+  tocLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + cur));
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+
+// ---------- Shared chart styling ----------
+Chart.defaults.font.family = "'Instrument Sans', sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = '#3d3a35';
+Chart.defaults.borderColor = '#d8d4cc';
+const C = {
+  accent:    '#2d5a3d',
+  accent2:   '#4a8c62',
+  accent3:   '#c8e6d0',
+  coral:     '#b84a2a',
+  amber:     '#c18a2a',
+  slate:     '#5b6470',
+  greyDark:  '#6b6760',
+  greyMid:   '#a8a39a',
+  greyLight: '#d8d4cc',
+  ink:       '#1a1814',
+};
+
+// ---------- H1: Accuracy vs Avg Tokens scatter ----------
+const h1Points = [
+  { m: 'CoT baseline',                acc: 0.530, tok: 404.4, cost: 763.0,  pareto: true  },
+  { m: 'Direct baseline',             acc: 0.000, tok: 64.0,  cost: 6400.0, pareto: true  },
+  { m: 'Adaptive DeGRPO (+refine)',   acc: 0.460, tok: 754.4, cost: 1640.1, pareto: false },
+  { m: 'Adaptive DeGRPO (-refine)',   acc: 0.590, tok: 613.1, cost: 1039.2, pareto: true  },
+  { m: 'Adaptive Vanilla (+refine)',  acc: 0.410, tok: 767.3, cost: 1871.4, pareto: false },
+  { m: 'Adaptive Vanilla (-refine)',  acc: 0.500, tok: 594.1, cost: 1188.3, pareto: false },
+];
+const paretoData    = h1Points.filter(p =>  p.pareto).map(p => ({ x: p.tok, y: p.acc, m: p.m, cost: p.cost }));
+const dominatedData = h1Points.filter(p => !p.pareto).map(p => ({ x: p.tok, y: p.acc, m: p.m, cost: p.cost }));
+
+new Chart(document.getElementById('chartH1'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      {
+        label: 'Non-dominated (Pareto)',
+        data: paretoData,
+        backgroundColor: C.accent,
+        borderColor: C.accent,
+        pointRadius: 7,
+        pointHoverRadius: 9,
+      },
+      {
+        label: 'Dominated',
+        data: dominatedData,
+        backgroundColor: 'rgba(168,163,154,0.15)',
+        borderColor: C.greyDark,
+        borderWidth: 1.5,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        pointStyle: 'circle',
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14 } },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const p = ctx.raw;
+            return `${p.m}: acc=${p.y.toFixed(3)}, tokens=${p.x.toFixed(1)}, cost/correct=${p.cost.toFixed(1)}`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'Avg tokens per problem' },
+        beginAtZero: true,
+        grid: { color: '#ece9e3' },
+      },
+      y: {
+        title: { display: true, text: 'Accuracy' },
+        min: 0, max: 0.75,
+        grid: { color: '#ece9e3' },
+      },
+    },
+  },
+});
+
+// ---------- H2: tokens by level (grouped bar) ----------
+const levels = ['L1','L2','L3','L4','L5'];
+const h2tokensWith = [594.4, 601.7, 672.8, 794.2, 1026.5];
+const h2tokensNo   = [513.3, 560.0, 570.2, 566.2,  798.9];
+const h2stepsWith  = [2.64, 2.76, 2.74, 2.77, 2.87];
+const h2stepsNo    = [2.82, 2.88, 2.74, 2.95, 2.96];
+
+new Chart(document.getElementById('chartH2tokens'), {
+  type: 'bar',
+  data: {
+    labels: levels,
+    datasets: [
+      { label: '+refine', data: h2tokensWith, backgroundColor: C.accent,  borderRadius: 4 },
+      { label: '-refine', data: h2tokensNo,   backgroundColor: C.coral,   borderRadius: 4 },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14 } },
+      tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} tokens` } },
+    },
+    scales: {
+      x: { title: { display: true, text: 'MATH-500 difficulty level (1 = easy, 5 = hard)' }, grid: { display: false } },
+      y: { title: { display: true, text: 'Mean tokens / problem' }, beginAtZero: true, grid: { color: '#ece9e3' } },
+    },
+  },
+});
+
+new Chart(document.getElementById('chartH2steps'), {
+  type: 'bar',
+  data: {
+    labels: levels,
+    datasets: [
+      { label: '+refine', data: h2stepsWith, backgroundColor: C.accent2, borderRadius: 4 },
+      { label: '-refine', data: h2stepsNo,   backgroundColor: C.amber,   borderRadius: 4 },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14 } },
+      tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} steps` } },
+    },
+    scales: {
+      x: { title: { display: true, text: 'MATH-500 difficulty level' }, grid: { display: false } },
+      y: { title: { display: true, text: 'Mean steps / problem' }, min: 0, max: 4, grid: { color: '#ece9e3' } },
+    },
+  },
+});
+
+// ---------- H3: stacked bar of action shares ----------
+const h3With = {
+  cont:  [0.862, 0.841, 0.769, 0.836, 0.879],
+  ref:   [0.000, 0.029, 0.096, 0.066, 0.030],
+  term:  [0.138, 0.130, 0.135, 0.098, 0.091],
+};
+const h3No = {
+  cont:  [0.839, 0.903, 0.885, 0.985, 0.912],
+  ref:   [0.000, 0.000, 0.000, 0.000, 0.000],
+  term:  [0.161, 0.097, 0.115, 0.015, 0.088],
+};
+
+function stackedActionChart(canvasId, data) {
+  return new Chart(document.getElementById(canvasId), {
+    type: 'bar',
+    data: {
+      labels: levels,
+      datasets: [
+        { label: 'continue',  data: data.cont, backgroundColor: C.accent2, stack: 's' },
+        { label: 'refine',    data: data.ref,  backgroundColor: C.amber,   stack: 's' },
+        { label: 'terminate', data: data.term, backgroundColor: C.coral,   stack: 's' },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14 } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${(ctx.parsed.y * 100).toFixed(1)}%`,
+          },
+        },
+      },
+      scales: {
+        x: { stacked: true, title: { display: true, text: 'MATH-500 difficulty level' }, grid: { display: false } },
+        y: {
+          stacked: true,
+          min: 0, max: 1,
+          title: { display: true, text: 'Action fraction' },
+          ticks: { callback: (v) => (v * 100).toFixed(0) + '%' },
+          grid: { color: '#ece9e3' },
+        },
+      },
+    },
+  });
+}
+
+stackedActionChart('chartH3withRefine', h3With);
+stackedActionChart('chartH3noRefine',   h3No);
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@ Setup actually used in this report:
 - Action set at training time: `allow_refine: false` → policy effectively `continue / terminate` (2-action). H3 is therefore reported in reduced form.
 - Resume: per-problem JSONL so interrupted eval jobs can be resumed without recomputation.
 
-> Numbers below are placeholders — fill them after the CHPC jobs complete and analysis scripts have been run.
+Results below are from one eval run (`eval_subset_size=100`), merged for H1 via `scripts/analyze_h1_pareto.py` (main + vanilla `comparison.json`). Baselines CoT/Direct are deduped from the main eval file in that script.
 
 ## Pipeline to reproduce
 
@@ -59,18 +59,20 @@ python scripts/analyze_h2_h3.py \
 
 ## H1 — ALP + DeGRPO improves the accuracy–efficiency Pareto frontier
 
-Metric table (fill after running `scripts/analyze_h1_pareto.py`):
+Metric table (`python scripts/analyze_h1_pareto.py`; n=100 per adaptive row; CoT/Direct from main eval):
 
-| Method | Accuracy (95% CI) | Avg tokens | Cost / correct | Pareto status |
-|--------|-------------------|------------|-----------------|----------------|
-| CoT baseline | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| Direct baseline | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| Adaptive DeGRPO (+refine) | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| Adaptive DeGRPO (-refine) | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| Adaptive Vanilla (+refine) | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| Adaptive Vanilla (-refine) | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
+| Method | Correct / total | Accuracy (95% CI) | Avg tokens | Cost / correct | Pareto status |
+|--------|-----------------|---------------------|------------|------------------|----------------|
+| CoT baseline | 53 / 100 | 0.530 [0.433, 0.625] | 404.4 | 763.0 | non-dominated |
+| Direct baseline | 0 / 100 | 0.000 [0.000, 0.037] | 64.0 | 6400.0 | non-dominated |
+| Adaptive DeGRPO (+refine) | 46 / 100 | 0.460 [0.366, 0.557] | 754.4 | 1640.1 | dominated |
+| Adaptive DeGRPO (-refine) | 59 / 100 | 0.590 [0.492, 0.681] | 613.1 | 1039.2 | non-dominated |
+| Adaptive Vanilla (+refine) | 41 / 100 | 0.410 [0.319, 0.508] | 767.3 | 1871.4 | dominated |
+| Adaptive Vanilla (-refine) | 50 / 100 | 0.500 [0.404, 0.596] | 594.1 | 1188.3 | dominated |
 
-**Decision (fill):** supported / not supported. Point to dominated set in `h1_table.csv`.
+**Decision:** **Partially supported, nuanced.** The best adaptive point on this slice is **Adaptive DeGRPO (-refine)**: highest accuracy among adaptive runs, non-dominated in the script’s strict 2-D (accuracy vs avg tokens) check, and **higher accuracy than vanilla (-refine)** (0.59 vs 0.50) at similar token cost (~613 vs ~594). Decode with **+refine** is **dominated** for both DeGRPO and vanilla (lower accuracy, more tokens than better points). CIs overlap between CoT (0.53) and DeGRPO (-refine) (0.59), so the accuracy gain is **not** statistically tight at n=100.
+
+Dominated set printed by the analyzer: Adaptive (+refine) [DeGRPO], Adaptive (+refine) [vanilla], Adaptive (-refine) [vanilla]. See `chpc/results/eval/analysis/h1_table.csv` and `h1_pareto.png`.
 
 Notes:
 
@@ -79,38 +81,67 @@ Notes:
 
 ## H2 — learned policy allocates more compute to harder prompts
 
-Read `summary_adaptive_with_refine.json`:
+### Adaptive (+refine) decode (`adaptive_with_refine_results.json`)
 
-- Spearman(level, tokens): _tbd_
-- Spearman(level, steps): _tbd_
+From `summary_adaptive_with_refine.json` / terminal:
 
-Per-level averages (from `h2_adaptive_with_refine_per_level.csv`):
+- Spearman(level, tokens): **0.360**
+- Spearman(level, steps): **0.138**
+
+Per-level averages (`h2_adaptive_with_refine_per_level.csv`):
 
 | Level | n | mean tokens | mean steps | accuracy |
 |-------|---|-------------|------------|----------|
-| 1 | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| 2 | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| 3 | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| 4 | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| 5 | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
+| 1 | 11 | 594.4 | 2.64 | 0.545 |
+| 2 | 25 | 601.7 | 2.76 | 0.720 |
+| 3 | 19 | 672.8 | 2.74 | 0.474 |
+| 4 | 22 | 794.2 | 2.77 | 0.273 |
+| 5 | 23 | 1026.5 | 2.87 | 0.304 |
 
-**Decision (fill):** supported if Spearman(level, tokens) is meaningfully positive and tokens trend up with level. Plot: `h2_adaptive_with_refine_tokens_vs_level.png`.
+**Decision:** **Weakly supported for tokens vs difficulty.** Mean tokens rise from level 1 through 5 (594 → 1027), and Spearman(level, tokens) is positive but moderate. **Not supported for steps:** mean steps are flat (~2.7–2.9) and Spearman(level, steps) ≈ 0.14. Plot: `chpc/results/eval/analysis/h2_adaptive_with_refine_tokens_vs_level.png`.
+
+### Adaptive (-refine) decode (`adaptive_no_refine_results.json`)
+
+- Spearman(level, tokens): **0.288**
+- Spearman(level, steps): **0.149**
+
+| Level | n | mean tokens | mean steps | accuracy |
+|-------|---|-------------|------------|----------|
+| 1 | 11 | 513.3 | 2.82 | 0.909 |
+| 2 | 25 | 560.0 | 2.88 | 0.760 |
+| 3 | 19 | 570.2 | 2.74 | 0.789 |
+| 4 | 22 | 566.2 | 2.95 | 0.500 |
+| 5 | 23 | 798.9 | 2.96 | 0.174 |
+
+**Decision:** Same pattern: **token budget grows toward level 5** (513 → 799) with modest Spearman; steps nearly flat.
 
 ## H3 — action usage shifts with difficulty
 
-Because the main checkpoint was trained with `allow_refine: false`, the observed action set is `{continue, terminate}`. H3 is reported in reduced form here.
+Training used `allow_refine: false`, but **eval can still request +refine**, so the (+refine) decode path can emit refine tokens even if the policy was not trained for them.
 
-Per-level action fractions (from `h3_adaptive_with_refine_action_dist_per_level.csv`):
+### Adaptive (+refine) — action fractions by level (`h3_adaptive_with_refine_action_dist_per_level.csv`)
 
 | Level | n | frac continue | frac refine | frac terminate |
-|-------|---|----------------|--------------|------------------|
-| 1 | _tbd_ | _tbd_ | — | _tbd_ |
-| 2 | _tbd_ | _tbd_ | — | _tbd_ |
-| 3 | _tbd_ | _tbd_ | — | _tbd_ |
-| 4 | _tbd_ | _tbd_ | — | _tbd_ |
-| 5 | _tbd_ | _tbd_ | — | _tbd_ |
+|-------|---|---------------|-------------|----------------|
+| 1 | 11 | 0.862 | 0.000 | 0.138 |
+| 2 | 25 | 0.841 | 0.029 | 0.130 |
+| 3 | 19 | 0.769 | 0.096 | 0.135 |
+| 4 | 22 | 0.836 | 0.066 | 0.098 |
+| 5 | 23 | 0.879 | 0.030 | 0.091 |
 
-**Decision (fill):** supported in reduced form if `frac terminate` drops as level rises (equivalently, continue share rises with difficulty). Full 3-action H3 requires retraining with `allow_refine: true`; not done in this scope.
+**Decision:** **Partially supported.** `frac(terminate)` is **higher on easier levels (1–2)** than on harder levels (4–5), which matches the qualitative hypothesis (more terminate when the instance is easier). Continue share is noisy and not monotonic in level. Refine usage is small overall but peaks at level 3 in this slice.
+
+### Adaptive (-refine) — refine forced off at decode
+
+| Level | n | frac continue | frac refine | frac terminate |
+|-------|---|---------------|-------------|----------------|
+| 1 | 11 | 0.839 | 0.000 | 0.161 |
+| 2 | 25 | 0.903 | 0.000 | 0.097 |
+| 3 | 19 | 0.885 | 0.000 | 0.115 |
+| 4 | 22 | 0.985 | 0.000 | 0.015 |
+| 5 | 23 | 0.912 | 0.000 | 0.088 |
+
+**Decision:** **Terminate fraction still higher on easy (1) than on hard (5)** in this run; level 4 is an outlier (very few terminates). Interpret as **weak / slice-dependent** evidence for H3 in the 2-action regime. Full 3-action H3 after training with `allow_refine: true` was out of scope.
 
 ## Limitations
 
