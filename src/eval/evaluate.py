@@ -39,6 +39,45 @@ def _merge_action_counts(results: list[dict]) -> dict[str, int]:
     return out
 
 
+def _resume_key(item: dict) -> str:
+    """Stable identifier for an eval item; prefers unique_id, falls back to question."""
+    uid = item.get("unique_id")
+    if uid:
+        return str(uid)
+    return str(item.get("question") or item.get("prompt") or "")
+
+
+def _load_partial(partial_path: Path | None) -> tuple[list[dict], set[str]]:
+    """Load existing JSONL partial results and the set of keys already processed."""
+    if partial_path is None or not partial_path.exists():
+        return [], set()
+    results: list[dict] = []
+    done: set[str] = set()
+    with open(partial_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            results.append(record)
+            key = record.get("unique_id") or record.get("question") or record.get("prompt")
+            if key:
+                done.add(str(key))
+    return results, done
+
+
+def _append_jsonl(partial_path: Path | None, record: dict) -> None:
+    if partial_path is None:
+        return
+    partial_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(partial_path, "a") as f:
+        f.write(json.dumps(record, default=str) + "\n")
+        f.flush()
+
+
 def evaluate_results(results: list[dict], *, dataset_kind: str = "gsm8k") -> dict:
     """Compute aggregate metrics from a list of per-problem results."""
     total = len(results)
@@ -90,17 +129,26 @@ def run_cot_baseline(
     dataset: list[dict],
     stage_name: str = "CoT",
     pulse_every: int = 1,
+    partial_path: Path | None = None,
     **gen_kwargs,
 ) -> list[dict]:
     from src.policy.adaptive import cot_generate
 
-    results = []
+    results, done = _load_partial(partial_path)
     total = len(dataset)
+    if results:
+        print(
+            f"[resume] {stage_name}: {len(results)}/{total} already done, continuing",
+            flush=True,
+        )
     for idx, item in enumerate(dataset, start=1):
+        key = _resume_key(item)
+        if key in done:
+            continue
         out = cot_generate(model, tokenizer, item["question"], **gen_kwargs)
         predicted = extract_predicted_answer(out["answer_text"])
         correct = grade_answer(predicted, item["answer_number"])
-        results.append({
+        record = {
             "question": item["question"],
             "gold": item["answer_number"],
             "predicted": predicted,
@@ -108,7 +156,13 @@ def run_cot_baseline(
             "answer_text": out["answer_text"],
             "total_tokens": out["total_tokens"],
             "num_steps": out["num_steps"],
-        })
+            "level": item.get("level"),
+            "subject": item.get("subject"),
+            "unique_id": item.get("unique_id"),
+        }
+        _append_jsonl(partial_path, record)
+        results.append(record)
+        done.add(key)
         if idx % max(pulse_every, 1) == 0 or idx == total:
             print(f"[progress] {stage_name}: {idx}/{total}", flush=True)
     return results
@@ -120,17 +174,26 @@ def run_direct_baseline(
     dataset: list[dict],
     stage_name: str = "Direct",
     pulse_every: int = 1,
+    partial_path: Path | None = None,
     **gen_kwargs,
 ) -> list[dict]:
     from src.policy.adaptive import direct_generate
 
-    results = []
+    results, done = _load_partial(partial_path)
     total = len(dataset)
+    if results:
+        print(
+            f"[resume] {stage_name}: {len(results)}/{total} already done, continuing",
+            flush=True,
+        )
     for idx, item in enumerate(dataset, start=1):
+        key = _resume_key(item)
+        if key in done:
+            continue
         out = direct_generate(model, tokenizer, item["question"], **gen_kwargs)
         predicted = extract_predicted_answer(out["answer_text"])
         correct = grade_answer(predicted, item["answer_number"])
-        results.append({
+        record = {
             "question": item["question"],
             "gold": item["answer_number"],
             "predicted": predicted,
@@ -138,7 +201,13 @@ def run_direct_baseline(
             "answer_text": out["answer_text"],
             "total_tokens": out["total_tokens"],
             "num_steps": out["num_steps"],
-        })
+            "level": item.get("level"),
+            "subject": item.get("subject"),
+            "unique_id": item.get("unique_id"),
+        }
+        _append_jsonl(partial_path, record)
+        results.append(record)
+        done.add(key)
         if idx % max(pulse_every, 1) == 0 or idx == total:
             print(f"[progress] {stage_name}: {idx}/{total}", flush=True)
     return results
@@ -198,6 +267,7 @@ def run_adaptive_policy(
     allow_refine: bool = True,
     allow_verify: bool | None = None,
     system_prompt: str | None = None,
+    partial_path: Path | None = None,
     **gen_kwargs,
 ) -> list[dict]:
     from src.policy.adaptive import adaptive_generate
@@ -205,9 +275,17 @@ def run_adaptive_policy(
     if allow_verify is not None:
         allow_refine = allow_verify
 
-    results = []
+    results, done = _load_partial(partial_path)
     total = len(dataset)
+    if results:
+        print(
+            f"[resume] {stage_name}: {len(results)}/{total} already done, continuing",
+            flush=True,
+        )
     for idx, item in enumerate(dataset, start=1):
+        key = _resume_key(item)
+        if key in done:
+            continue
         out = adaptive_generate(
             model,
             tokenizer,
@@ -218,7 +296,7 @@ def run_adaptive_policy(
         )
         predicted = extract_predicted_answer(out["answer_text"])
         correct = grade_answer(predicted, item["answer_number"])
-        results.append({
+        record = {
             "question": item["question"],
             "gold": item["answer_number"],
             "predicted": predicted,
@@ -228,7 +306,13 @@ def run_adaptive_policy(
             "num_steps": out["num_steps"],
             "terminated": out.get("terminated", False),
             "action_counts": out.get("action_counts", {}),
-        })
+            "level": item.get("level"),
+            "subject": item.get("subject"),
+            "unique_id": item.get("unique_id"),
+        }
+        _append_jsonl(partial_path, record)
+        results.append(record)
+        done.add(key)
         if idx % max(pulse_every, 1) == 0 or idx == total:
             print(f"[progress] {stage_name}: {idx}/{total}", flush=True)
     return results

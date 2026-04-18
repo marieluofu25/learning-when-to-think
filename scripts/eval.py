@@ -90,6 +90,7 @@ def main():
             dataset,
             stage_name="CoT",
             pulse_every=args.pulse_every,
+            partial_path=output_dir / "cot_results.partial.jsonl",
         )
         cot_metrics = evaluate_results(cot_results, dataset_kind=kind)
         all_metrics["cot_baseline"] = cot_metrics
@@ -108,6 +109,7 @@ def main():
             stage_name="Direct",
             pulse_every=args.pulse_every,
             max_tokens=cfg.get("direct_max_tokens", 64),
+            partial_path=output_dir / "direct_results.partial.jsonl",
         )
         direct_metrics = evaluate_results(direct_results, dataset_kind=kind)
         all_metrics["direct_baseline"] = direct_metrics
@@ -127,6 +129,7 @@ def main():
     ]
     for allow_refine, out_name, metric_key in adaptive_runs:
         stage_name = "Adaptive-GRPO-with-refine" if allow_refine else "Adaptive-GRPO-no-refine"
+        partial_name = out_name.replace(".json", ".partial.jsonl")
         adaptive_results = run_adaptive_policy(
             trained_model,
             tokenizer,
@@ -134,6 +137,7 @@ def main():
             stage_name=stage_name,
             pulse_every=args.pulse_every,
             allow_refine=allow_refine,
+            partial_path=output_dir / partial_name,
             **gen_kw,
         )
         adaptive_metrics = evaluate_results(adaptive_results, dataset_kind=kind)
