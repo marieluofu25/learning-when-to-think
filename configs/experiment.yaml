@@ -1,0 +1,26 @@
+# Experiment configuration for MATH-500 evaluation
+# Used by scripts/run_experiment.py
+
+# Model
+base_model: "Qwen/Qwen2.5-Math-7B-Instruct"
+checkpoint: null  # Path to LoRA checkpoint (null = base model only)
+
+# Dataset
+eval_dataset: "math500"  # "math500" or "math_train"
+eval_subset: null  # null = full dataset, int = subset size
+
+# Generation
+method: "adaptive"  # "adaptive", "cot", "direct", "self_consistency"
+k_rollouts: 1  # For single-pass eval; set >1 for GRPO-style sampling
+temperature: 0.7
+max_steps: 10  # For adaptive method
+max_tokens_per_step: 256  # For adaptive method
+max_tokens: 2048  # For CoT/direct baselines
+
+# Self-consistency
+sc_k: 5  # Number of samples for self-consistency
+
+# Output
+output_dir: "results"
+experiment_name: "default"
+save_rollouts: true  # Save individual rollout results to JSONL

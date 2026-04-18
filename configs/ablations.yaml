@@ -1,0 +1,31 @@
+# Ablation study configuration
+# Used by scripts/run_ablations.py
+
+base_model: "Qwen/Qwen2.5-Math-7B-Instruct"
+eval_dataset: "math500"
+eval_subset: null
+
+# Ablation dimensions
+ablations:
+  # Beta (ALP length penalty coefficient) sweep
+  beta_sweep:
+    values: [0.0, 0.01, 0.02, 0.05, 0.1, 0.2]
+    description: "Effect of length penalty strength on accuracy-efficiency tradeoff"
+
+  # Refine action toggle
+  allow_refine:
+    values: [true, false]
+    description: "Impact of refine action on self-correction capability"
+
+  # DeGRPO toggle
+  degrpo:
+    values: [true, false]
+    description: "Impact of control-token gradient weighting"
+
+# Generation defaults
+temperature: 0.7
+max_steps: 10
+max_tokens_per_step: 256
+k_rollouts: 1
+
+output_dir: "results/ablations"
