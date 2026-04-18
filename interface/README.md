@@ -43,7 +43,7 @@ Deploy `interface/dist/` to any static host (GitHub Pages, Netlify, etc.). `vite
 
 ## Links in the UI
 
-Header and footer use relative links (`../docs/...`, `../Final proposal...`) so they resolve when the app is served from `interface/` during dev, or adjust paths for your deploy URL.
+Header and footer use relative links (`../docs/...`, `../project_docs/Final proposal - Learning When to Think.pdf`) so they resolve when the app is served from `interface/` during dev, or adjust paths for your deploy URL.
 
 ## Stack
 

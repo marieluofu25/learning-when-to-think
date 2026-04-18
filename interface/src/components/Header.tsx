@@ -34,7 +34,7 @@ export function Header() {
           <span>University of Utah · CS 6955</span>
           <a
             className="text-white/70 underline decoration-white/25 hover:text-white"
-            href="../Final proposal - Learning When to Think (2).pdf"
+            href="../project_docs/Final proposal - Learning When to Think.pdf"
           >
             Final proposal (PDF)
           </a>
@@ -42,7 +42,7 @@ export function Header() {
             className="text-white/70 underline decoration-white/25 hover:text-white"
             href="../docs/results_h1_h3.md"
           >
-            Raw results (md)
+            Raw result · docs/results_h1_h3.md
           </a>
         </div>
       </div>
