@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Project: Learning When to Think
 
 LLMs waste compute by thinking the same amount on every problem. This project trains a model that learns *when to keep thinking, self-correct, or stop* via RL.
@@ -161,3 +165,59 @@ When an entry has multiple backoff tokens, each must govern a **separate wrong r
 ## Paper 
 
 For a paper summary at `papers/read/`, its related paper is just at `papers/`, categorized into a subdirectory by its topic. You may want to also read the paper before make any conclusion
+
+---
+
+# Repository Layout
+
+Two parallel implementation tracks share the same `src/` tree:
+
+- **Main HF / training track** — `src/policy/adaptive.py` (3-action rollout loop), `src/train/grpo.py` (GRPO + ALP + DeGRPO + LoRA), `src/train/dpo.py`, `src/train/sft.py`, `src/train/model_loading.py` (optional 4-bit QLoRA), `src/eval/evaluate.py`. Used by `scripts/train.py`, `scripts/eval.py`, `scripts/train_sft_3action.py`, `scripts/train_dpo.py`.
+- **Pivot / vLLM track** — `src/pivot/{generate,reward,eval_harness,eval_types,tokens,vllm_cuda_env}.py`. Faster MATH-500 throughput; used by `scripts/eval_pivot.py` and `scripts/generate_rollouts_pivot.py`.
+
+Data adapters live in `src/data/` (`math_500.py` is canonical; `math.py`, `gsm8k.py`, `humaneval.py`, `math_competition.py`, `teacher.py` are auxiliary).
+
+Configs in `configs/`: `default.yaml` is the local recipe; `chpc_*.yaml` are cluster recipes; `eval_qwen_math_7b.yaml` drives the vLLM pivot eval. Action knobs live in YAML — most flags (`degrpo`, `allow_refine`, `constrain_action_first_token`, `w_ctrl`/`w_resp`, `beta`, `L_max`, `n_control_tokens`) are read from the config, not CLI.
+
+# Common commands
+
+```bash
+pip install -e .                                              # editable install (defines `learning-when-to-think` package)
+
+# Train + evaluate (HF stack)
+python scripts/train.py --config configs/default.yaml --output-dir checkpoints/grpo
+python scripts/eval.py  --config configs/default.yaml --checkpoint checkpoints/grpo/final
+
+# Fast MATH-500 eval (vLLM pivot)
+python -m scripts.eval_pivot --config configs/eval_qwen_math_7b.yaml
+
+# SFT / DPO
+python scripts/generate_sft_3action.py            # build messages JSONL
+python scripts/train_sft_3action.py --config configs/chpc_sft_3action.yaml --output-dir checkpoints/sft_3action
+python scripts/train_dpo.py        --config configs/chpc_dpo.yaml
+
+# Plots and analysis
+python scripts/plot_results.py     --comparison results/eval/comparison.json
+python scripts/analyze_h1_pareto.py            # H1 (accuracy/efficiency Pareto)
+python scripts/analyze_h2_h3.py                # H2/H3 (difficulty allocation)
+
+# Tests (pytest is not in pyproject deps; install separately if missing)
+pytest tests/                                  # all
+pytest tests/test_pivot_eval.py::<test_name>   # single test
+```
+
+# CHPC (Utah cluster)
+
+Single entrypoint: `bash chpc/run_chpc.sh <subcmd> ...` from repo root. Subcommands: `train-grpo | eval | build-rollouts-data | build-sft-data | train-sft | train-dpo | run-all`. All artifacts go under `chpc/results/`. Override Slurm with `CHPC_ACCOUNT` / `CHPC_PARTITION` / `CHPC_QOS`; venv with `CHPC_VENV` (default `~/venvs/teaching-llms-errors`). `run-all` chains GRPO+SFT in parallel, then DPO after SFT and eval after GRPO, auto-submitting `build-rollouts-data` → `build-sft-data` if the SFT JSONL is missing. See `chpc/README.md` for the full matrix.
+
+# Notes for changes that touch the rollout loop
+
+- The 3-action interface is defined by string tokens (`<continue>`, `<refine>`, `<terminate>`) in `src/policy/adaptive.py`. Legacy checkpoints used `<verify>` for `<refine>` — the detector handles both. Don't rename without updating both `adaptive.py` and the SFT/DPO data builders.
+- DeGRPO weights `n_control_tokens` action-prefix tokens with `w_ctrl` and the rest with `w_resp` (`src/train/grpo.py:recompute_log_probs_weighted`). Setting `degrpo: false` falls back to vanilla GRPO with uniform weighting.
+- ALP reward uses **group solve rate `SR(q)`** computed over `num_rollouts_per_problem` rollouts per prompt — changes to grouping must keep that grouping intact, or the length penalty becomes meaningless.
+
+# Project-specific docs
+
+- `project_docs/02_method.md` — semantic-boundary heuristics referenced by the dataset rules above.
+- `papers/` — referenced literature; summaries under `papers/read/`.
+- `.claude/agents/backoff-sample-refiner.md` — subagent prompt used for one-entry-at-a-time backoff dataset perturbations (see "Process" rule above).

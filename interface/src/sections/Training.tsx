@@ -17,19 +17,14 @@ export function Training() {
         the action signal from being washed out by the long text.
       </p>
       <Formula
+        tex={String.raw`\mathcal{L} \;=\; -\,A_k \bigl( w_{\mathrm{ctrl}}\,\log p_{\mathrm{ctrl}} \;+\; w_{\mathrm{resp}}\,\log p_{\mathrm{resp}} \bigr) \;+\; \lambda_{\mathrm{KL}} \cdot \mathrm{KL}`}
         sub={
           <>
             Default weights: w<sub>ctrl</sub> = 2.0, w<sub>resp</sub> = 1.0. KL term
             keeps the policy close to the base model.
           </>
         }
-      >
-        L = &minus;A<sub>k</sub> ({" "}
-        <span className="text-accent">w<sub>ctrl</sub></span> &middot; log p
-        <sub>ctrl</sub> + <span className="text-accent">w<sub>resp</sub></span>{" "}
-        &middot; log p<sub>resp</sub> ) +{" "}
-        <span className="text-accent">&lambda;<sub>KL</sub></span> &middot; KL
-      </Formula>
+      />
       <div className="mb-4 grid gap-2.5 sm:grid-cols-2">
         <KvCard label="Base model">Qwen2.5-Math-7B-Instruct</KvCard>
         <KvCard label="Adapter">

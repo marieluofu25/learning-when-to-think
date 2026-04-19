@@ -9,21 +9,25 @@ export function Reward() {
         answer. The penalty is bigger when the question is easy.
       </p>
       <Formula
+        tex={String.raw`R_k \;=\; r_{\mathrm{acc},k} \;-\; \beta \cdot \max\bigl(0,\, \mathrm{SR}(q)\bigr) \cdot \frac{n_{\mathrm{tokens},k}}{L_{\max}}`}
         sub={
           <>
-            <b>r<sub>acc,k</sub></b>: 1 if the answer is correct, else 0.{" "}
-            <b>SR(q)</b>: how often the group solves question q (a proxy for
-            &quot;easy&quot;). <b>n<sub>tokens,k</sub></b>: how long the answer is.{" "}
-            <b>&beta;, L<sub>max</sub></b>: fixed scale factors.
+            <b>
+              r<sub>acc,k</sub>
+            </b>
+            : 1 if the answer is correct, else 0. <b>SR(q)</b>: how often the group
+            solves question q (a proxy for &quot;easy&quot;).{" "}
+            <b>
+              n<sub>tokens,k</sub>
+            </b>
+            : how long the answer is.{" "}
+            <b>
+              &beta;, L<sub>max</sub>
+            </b>
+            : fixed scale factors.
           </>
         }
-      >
-        R<sub>k</sub> ={" "}
-        <span className="text-accent">r<sub>acc,k</sub></span> &minus;{" "}
-        <span className="text-accent">&beta;</span> &middot; max(0,{" "}
-        <span className="text-accent">SR(q)</span>) &middot; n<sub>tokens,k</sub> / L
-        <sub>max</sub>
-      </Formula>
+      />
       <p>
         In plain words: <strong>easy + long = big penalty</strong>.{" "}
         <strong>hard + long = small penalty</strong>. So the model learns to spend
