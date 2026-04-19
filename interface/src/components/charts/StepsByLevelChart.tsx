@@ -21,21 +21,40 @@ export function StepsByLevelChart() {
         Step count stays almost flat (~2.6–3.0). The model uses longer text inside
         a step, not more steps.
       </p>
-      <div className="h-[320px] w-full">
+      <div className="h-[380px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+          <BarChart data={data} margin={{ top: 16, right: 16, left: 24, bottom: 48 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ece9e3" vertical={false} />
-            <XAxis dataKey="level" tick={{ fontSize: 11 }} />
-            <YAxis domain={[0, 4]} tick={{ fontSize: 11 }} />
+            <XAxis
+              dataKey="level"
+              tick={{ fontSize: 13, fill: "#3a3730" }}
+              tickMargin={8}
+            />
+            <YAxis
+              domain={[0, 3.5]}
+              ticks={[0, 1, 2, 3]}
+              tick={{ fontSize: 13, fill: "#3a3730" }}
+              tickMargin={4}
+              label={{
+                value: "Mean steps / problem",
+                angle: -90,
+                position: "insideLeft",
+                offset: -4,
+                style: { fill: "#6b6760", fontSize: 12, textAnchor: "middle" },
+              }}
+            />
             <Tooltip
               formatter={(v: number, name: string) => [
                 `${v.toFixed(2)} steps`,
                 name === "+refine" ? "+refine" : "-refine",
               ]}
             />
-            <Legend />
-            <Bar name="+refine" dataKey="stepsWithRefine" fill="#4a8c62" radius={[4, 4, 0, 0]} />
-            <Bar name="-refine" dataKey="stepsNoRefine" fill="#c18a2a" radius={[4, 4, 0, 0]} />
+            <Legend
+              wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
+              verticalAlign="bottom"
+            />
+            <Bar name="+refine" dataKey="stepsWithRefine" fill="#4a8c62" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+            <Bar name="-refine" dataKey="stepsNoRefine" fill="#c18a2a" radius={[4, 4, 0, 0]} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
       </div>

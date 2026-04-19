@@ -20,27 +20,24 @@ export function TokensByLevelChart() {
       <p className="mb-3 text-xs leading-relaxed text-ink-3">
         Tokens tend to rise from L1 (easy) to L5 (hard) for both decode modes.
       </p>
-      <div className="h-[320px] w-full">
+      <div className="h-[380px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+          <BarChart data={data} margin={{ top: 16, right: 16, left: 24, bottom: 48 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ece9e3" vertical={false} />
             <XAxis
               dataKey="level"
-              tick={{ fontSize: 11 }}
-              label={{
-                value: "MATH-500 level (1 = easy, 5 = hard)",
-                position: "insideBottom",
-                offset: -2,
-                style: { fill: "#6b6760", fontSize: 11 },
-              }}
+              tick={{ fontSize: 13, fill: "#3a3730" }}
+              tickMargin={8}
             />
             <YAxis
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 13, fill: "#3a3730" }}
+              tickMargin={4}
               label={{
                 value: "Mean tokens / problem",
                 angle: -90,
                 position: "insideLeft",
-                style: { fill: "#6b6760", fontSize: 11 },
+                offset: -4,
+                style: { fill: "#6b6760", fontSize: 12, textAnchor: "middle" },
               }}
             />
             <Tooltip
@@ -49,9 +46,12 @@ export function TokensByLevelChart() {
                 name === "+refine" ? "+refine" : "-refine",
               ]}
             />
-            <Legend />
-            <Bar name="+refine" dataKey="tokensWithRefine" fill="#2d5a3d" radius={[4, 4, 0, 0]} />
-            <Bar name="-refine" dataKey="tokensNoRefine" fill="#b84a2a" radius={[4, 4, 0, 0]} />
+            <Legend
+              wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
+              verticalAlign="bottom"
+            />
+            <Bar name="+refine" dataKey="tokensWithRefine" fill="#2d5a3d" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+            <Bar name="-refine" dataKey="tokensNoRefine" fill="#b84a2a" radius={[4, 4, 0, 0]} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
       </div>
